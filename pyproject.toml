@@ -1,0 +1,138 @@
+[project]
+name = "vaspilot"
+version = "0.1.0"
+description = "VASP automation and analysis using CrewAI framework with MCP support"
+authors = [{ name = "Jiaxuan Liu", email = "1710905756@qq.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    # CrewAI框架
+    "crewai>=0.102.0,<1.0.0",
+    "crewai-tools>=0.12.0",
+    
+    # MCP (Model Control Protocol)
+    "fastmcp>=2.10.6",
+    "mcp>=1.11.0",
+    
+    # 材料科学计算
+    "pymatgen>=2025.0.0",
+    "ase>=3.22.0",
+    "mp-api>=0.45.0",
+    
+    # 数据科学和可视化
+    "numpy>=1.24.0,<2.0.0",
+    "pandas>=2.0.0",
+    "matplotlib>=3.7.0",
+    "scipy>=1.10.0",
+    
+    # 数据处理和序列化
+    "pydantic>=2.4.0,<3.0.0",
+    "PyYAML>=6.0",
+    "requests>=2.28.0",
+    
+    # 向量数据库和嵌入
+    "chromadb>=0.4.0",
+    
+    # Markdown处理
+    "markdown>=3.4.0",
+    
+    # 文件处理
+    "python-multipart>=0.0.6"
+]
+
+[project.optional-dependencies]
+# Web服务依赖（Flask版本）
+flask = [
+    "Flask",
+    "gunicorn",
+    "Jinja2"
+]
+# 完整安装（包含所有可选依赖）
+all = [
+    "vaspilot[flask]"
+]
+
+[project.scripts]
+vaspilot_server = "vaspilot.scripts:start_crew"
+vaspilot_mcp = "vaspilot.scripts:start_mcp"
+
+[project.urls]
+Homepage = "https://github.com/JiaxuanLiu-Arsko/VASPilot"
+Repository = "https://github.com/JiaxuanLiu-Arsko/VASPilot"
+Documentation = "https://github.com/JiaxuanLiu-Arsko/VASPilot#readme"
+
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vaspilot"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "configs/",
+    "README.md",
+    "pyproject.toml"
+]
+
+# 测试配置
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=src/vasp_crew",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--strict-markers",
+    "-v"
+]
+
+# 代码格式化配置
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+)/
+'''
+
+# 类型检查配置
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pymatgen.*",
+    "ase.*",
+    "mp_api.*",
+    "crewai.*",
+    "chromadb.*",
+    "fastmcp.*",
+    "mcp.*"
+]
+ignore_missing_imports = true

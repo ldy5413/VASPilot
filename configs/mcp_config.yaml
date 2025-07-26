@@ -1,0 +1,72 @@
+POTCAR_dir: /data/work/jxliu/POTCARS/
+VASP_cmd: srun -N 1 --partition=test -A hmt03 mpirun -np 64 vasp_ncl
+attachment_path: /data/work/tmp/VASPilot/mcp/attachment
+work_dir: /data/work/tmp/VASPilot/mcp/work
+db_path: /data/work/tmp/VASPilot/mcp/record/record.db
+mp_download_path: /data/work/tmp/VASPilot/mcp/downloads
+mp_api_key: 1TBXWvHvWgCezSRkw7hREjbbvXBuQ95b
+VASP_default_INCAR:
+  relaxation:
+    ISYM: -1
+    NCORE: 4
+    PREC: 'Accurate'
+    ISMEAR: 0
+    SIGMA: 0.03
+    EDIFF: 1e-6
+    AMIN: 0.01
+    LCHARG: True
+    IBRION: 1
+    EDIFFG: -0.005
+    NSW: 100
+    MAGMOM: "5000*0"
+    ISIF: 3
+    NELM: 120
+    LWAVE: False
+    LCHARG: True
+  scf_nsoc: 
+    NCORE: 4
+    PREC: 'Accurate'
+    ISMEAR: 0
+    SIGMA: 0.03
+    EDIFF: 1e-7
+    AMIN: 0.01
+    LCHARG: True
+    LWAVE: True
+    NELM: 120
+  nscf_nsoc:
+    NCORE: 4
+    PREC: 'Accurate'
+    ISMEAR: 0
+    SIGMA: 0.03
+    EDIFF: 1e-7
+    AMIN: 0.01
+    LCHARG: True
+    LWAVE: True
+    NELM: 120
+  scf_soc: 
+    NCORE: 4
+    PREC: 'Accurate'
+    ISMEAR: 0
+    SIGMA: 0.03
+    EDIFF: 1e-7
+    AMIN: 0.01
+    LCHARG: True
+    LWAVE: True
+    LSORBIT: True
+    LORBIT: 11
+    NELM: 120
+  nscf_soc:
+    NCORE: 4
+    PREC: 'Accurate'
+    ISMEAR: 0
+    SIGMA: 0.03
+    EDIFF: 1e-7
+    AMIN: 0.01
+    LCHARG: True
+    LWAVE: True
+    ICHARG: 11
+    ISART: 1
+    LSORBIT: True
+    LORBIT: 11
+    NELM: 120
+
