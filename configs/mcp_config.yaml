@@ -1,5 +1,4 @@
 POTCAR_dir: /data/work/jxliu/POTCARS/
-VASP_cmd: srun -N 1 --partition=test -A hmt03 mpirun -np 64 vasp_ncl
 attachment_path: /data/work/tmp/VASPilot/mcp/attachment
 work_dir: /data/work/tmp/VASPilot/mcp/work
 db_path: /data/work/tmp/VASPilot/mcp/record/record.db
@@ -7,7 +6,6 @@ mp_download_path: /data/work/tmp/VASPilot/mcp/downloads
 mp_api_key: 1TBXWvHvWgCezSRkw7hREjbbvXBuQ95b
 VASP_default_INCAR:
   relaxation:
-    ISYM: -1
     NCORE: 4
     PREC: 'Accurate'
     ISMEAR: 0

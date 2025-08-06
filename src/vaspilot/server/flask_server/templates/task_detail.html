@@ -198,7 +198,7 @@
   </head>
 <body>
     <!-- 自动刷新提示 -->
-    <div class="refresh-indicator" id="refresh-indicator">🔄 正在刷新...</div>
+    <div class="refresh-indicator" id="refresh-indicator">🔄 Refreshing...</div>
     
     <div class="container-fluid">
         <div class="row">
@@ -206,13 +206,13 @@
             <div class="col-md-3 sidebar bg-light p-3">
                 <h4 class="mb-3">{{ title }}</h4>
                 <div class="mb-3">
-                    <a href="/" class="btn btn-outline-primary btn-sm">← 返回首页</a>
+                    <a href="/" class="btn btn-outline-primary btn-sm">← Back to home</a>
                 </div>
                 
                 <!-- 最近任务 -->
                 <div class="card">
                     <div class="card-header">
-                        <h6 class="mb-0">最近任务</h6>
+                        <h6 class="mb-0">Recent missions</h6>
                     </div>
                     <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
                         {% for recent_task in recent_tasks %}
@@ -230,10 +230,10 @@
                                         {% elif recent_task.status == 'failed' %}bg-danger
                                         {% else %}bg-secondary
                                         {% endif %}">
-                                        {% if recent_task.status == 'completed' %}完成
-                                        {% elif recent_task.status == 'running' %}运行
-                                        {% elif recent_task.status == 'failed' %}失败
-                                        {% else %}等待
+                                        {% if recent_task.status == 'completed' %}Completed
+                                        {% elif recent_task.status == 'running' %}Running
+                                        {% elif recent_task.status == 'failed' %}Failed
+                                        {% else %}Waiting
                                         {% endif %}
                                     </span>
                                 </div>
@@ -250,7 +250,7 @@
                 <div class="card mb-4">
                     <div class="card-header">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">任务详情</h5>
+                            <h5 class="mb-0">Task details</h5>
                             <span class="badge main-task-status-badge
                                 {% if task.status == 'completed' %}bg-success
                                 {% elif task.status == 'running' %}bg-primary
@@ -270,25 +270,25 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <small class="text-muted">
-                                    <strong>对话ID:</strong> {{ task.conversation_id }}<br>
-                                    <strong>创建时间:</strong> {{ task.created_at }}<br>
+                                    <strong>Conversation ID:</strong> {{ task.conversation_id }}<br>
+                                    <strong>Creation time:</strong> {{ task.created_at }}<br>
                                     {% if task.started_at %}
-                                    <strong>开始时间:</strong> {{ task.started_at }}<br>
+                                    <strong>Start time:</strong> {{ task.started_at }}<br>
                                     {% endif %}
                                     {% if task.completed_at %}
-                                    <strong>完成时间:</strong> {{ task.completed_at }}<br>
+                                    <strong>Completion time:</strong> {{ task.completed_at }}<br>
                                     {% endif %}
                                 </small>
                             </div>
                             <div class="col-md-6">
                                 {% if task.error_message %}
                                 <div class="alert alert-danger" role="alert">
-                                    <strong>错误信息:</strong> {{ task.error_message }}
+                                    <strong>Error message:</strong> {{ task.error_message }}
                                 </div>
                                 {% endif %}
                                 {% if task.result %}
                                 <div class="alert alert-success" role="alert">
-                                    <strong>执行结果:</strong> 任务已完成
+                                    <strong>Execution result:</strong> Task completed
                                 </div>
                                 {% endif %}
                             </div>
@@ -300,7 +300,7 @@
                 <div class="card mb-4">
                     <div class="card-header">
                         <h6 class="mb-0">
-                            <i class="fas fa-project-diagram"></i> 执行流程图
+                            <i class="fas fa-project-diagram"></i> Workflow
                             <!-- <small class="text-muted ms-2">💡 点击流程图中的节点可跳转到详情</small> -->
                         </h6>
                     </div>
@@ -317,9 +317,9 @@
                         <div class="text-center mt-2">
                             <small class="text-muted">
                                 <i class="fas fa-info-circle"></i> 
-                                <span style="color: #1976d2; background: #e3f2fd; padding: 2px 8px; border-radius: 8px; border: 2px solid #1976d2;">Agent</span> 圆角长方形 &nbsp;
-                                <span style="color: #f57c00; background: #fff3e0; padding: 2px 8px; border: 2px solid #f57c00;">Tool</span> 方角长方形 &nbsp;
-                                <span style="color: #4caf50; background: #e8f5e8; padding: 2px 8px; border-radius: 50%; border: 2px solid #4caf50;">●</span> 开始/结束
+                                <span style="color: #1976d2; background: #e3f2fd; padding: 2px 8px; border-radius: 8px; border: 2px solid #1976d2;">Agent</span> Agent &nbsp;
+                                <span style="color: #f57c00; background: #fff3e0; padding: 2px 8px; border: 2px solid #f57c00;">Tool</span> Tool &nbsp;
+                                <span style="color: #4caf50; background: #e8f5e8; padding: 2px 8px; border-radius: 50%; border: 2px solid #4caf50;">●</span> start/end
                             </small>
                         </div>
                     </div>
@@ -330,7 +330,7 @@
                     <div class="col-md-4">
                         <div class="card">
                             <div class="card-header">
-                                <h6 class="mb-0">活动历史</h6>
+                                <h6 class="mb-0">Event history</h6>
                             </div>
                             <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
                                 <div class="list-group list-group-flush">
@@ -350,13 +350,13 @@
                                                     {% elif log.type == 'tool_output' %}bg-info text-white
                                                     {% endif %}">
                                                                                         {% if log.type == 'agent_input' %}
-                                        <i class="fas fa-robot"></i> {% if log.role_name %}{{ log.role_name }} 输入{% else %}Agent输入{% endif %}
+                                        <i class="fas fa-robot"></i> {% if log.role_name %}{{ log.role_name }} input{% else %}Agent input{% endif %}
                                     {% elif log.type == 'agent_output' %}
-                                        <i class="fas fa-robot"></i> {% if log.role_name %}{{ log.role_name }} 输出{% else %}Agent输出{% endif %}
+                                        <i class="fas fa-robot"></i> {% if log.role_name %}{{ log.role_name }} output{% else %}Agent output{% endif %}
                                     {% elif log.type == 'tool_input' %}
-                                        <i class="fas fa-tools"></i> {% if log.role_name %}{{ log.role_name }} 调用{% else %}工具调用{% endif %}
+                                        <i class="fas fa-tools"></i> {% if log.role_name %}{{ log.role_name }} call{% else %}Tool call{% endif %}
                                     {% elif log.type == 'tool_output' %}
-                                        <i class="fas fa-tools"></i> {% if log.role_name %}{{ log.role_name }} 结果{% else %}工具结果{% endif %}
+                                        <i class="fas fa-tools"></i> {% if log.role_name %}{{ log.role_name }} result{% else %}Tool result{% endif %}
                                     {% else %}
                                         <i class="fas fa-info-circle"></i> {{ log.type_name }}
                                     {% endif %}
@@ -375,11 +375,11 @@
                     <div class="col-md-8">
                         <div class="card">
                             <div class="card-header">
-                                <h6 class="mb-0" id="detail-title">选择左侧项目查看详情</h6>
+                                <h6 class="mb-0" id="detail-title">Select an item on the left to view details</h6>
                             </div>
                             <div class="card-body" id="detail-content">
                                 <div class="text-center text-muted">
-                                    <p>请点击左侧的历史记录项目来查看详细内容。</p>
+                                    <p>Click on the history record item on the left to view detailed content.</p>
                                 </div>
                             </div>
                         </div>
@@ -387,9 +387,9 @@
                         <!-- 文件显示区域 -->
                         <div class="card mt-3" id="file-display-area" style="display: none;">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0" id="file-display-title">文件预览</h6>
+                                <h6 class="mb-0" id="file-display-title">File preview</h6>
                                 <button class="btn btn-sm btn-outline-secondary" onclick="closeFileDisplay()">
-                                    <i class="fas fa-times"></i> 关闭
+                                    <i class="fas fa-times"></i> Close
                                 </button>
                             </div>
                             <div class="card-body" id="file-display-content">
@@ -402,7 +402,7 @@
                         <div data-static-result="{{ task.result|escape }}" style="display: none;"></div>
                         <div class="card mt-3">
                             <div class="card-header">
-                                <h6 class="mb-0">最终执行结果</h6>
+                                <h6 class="mb-0">Final result</h6>
                             </div>
                             <div class="card-body">
                                 <div class="markdown-content" id="final-result-content">
@@ -456,11 +456,11 @@
         if (obj.error === 'tool_output_processing_failed') {
             return 
                 '<div class="alert alert-danger">' +
-                    '<h6><i class="fas fa-times-circle"></i> 工具输出处理失败</h6>' +
-                    '<p><strong>工具:</strong> ' + obj.tool_name + '</p>' +
-                    '<p><strong>错误:</strong> ' + obj.error_message + '</p>' +
+                    '<h6><i class="fas fa-times-circle"></i> Tool output processing failed</h6>' +
+                    '<p><strong>Tool:</strong> ' + obj.tool_name + '</p>' +
+                    '<p><strong>Error:</strong> ' + obj.error_message + '</p>' +
                     '<details>' +
-                        '<summary>查看原始输出</summary>' +
+                        '<summary>View raw output</summary>' +
                         '<pre class="mt-2 p-2 bg-light border rounded">' + obj.raw_output + '</pre>' +
                     '</details>' +
                 '</div>';
@@ -512,7 +512,7 @@
                             '<div class="file-link-container">' +
                                 '<code class="file-path">' + valueStr + '</code>' +
                                 '<button class="btn btn-sm btn-outline-primary ms-2" onclick="showImageFile(decodeURIComponent(\'' + encodedValue + '\'), \'' + buttonId + '\')">' +
-                                    '<i class="fas fa-image"></i> 查看' +
+                                    '<i class="fas fa-image"></i> View' +
                                 '</button>' +
                             '</div>';
                     } else if (valueStr.includes('.vasp') || valueStr.includes('.xyz') || valueStr.includes('.cif')) {
@@ -523,7 +523,7 @@
                             '<div class="file-link-container">' +
                                 '<code class="file-path">' + valueStr + '</code>' +
                                 '<button class="btn btn-sm btn-outline-success ms-2" onclick="showVaspFile(decodeURIComponent(\'' + encodedValue + '\'), \'' + buttonId + '\')">' +
-                                    '<i class="fas fa-cube"></i> 查看' +
+                                    '<i class="fas fa-cube"></i> View' +
                                 '</button>' +
                             '</div>';
                     } else if (typeof value === 'boolean') {
@@ -555,10 +555,10 @@
         // 专门处理已经在<code>标签内的文件路径
         function processCodeElements(content) {
             const filePatterns = [
-                { ext: 'png', buttonClass: 'primary', iconClass: 'image', iconText: '查看图片', showFunction: 'showImageFile' },
-                { ext: 'vasp', buttonClass: 'success', iconClass: 'cube', iconText: '查看结构', showFunction: 'showVaspFile' },
-                { ext: 'xyz', buttonClass: 'success', iconClass: 'cube', iconText: '查看结构', showFunction: 'showVaspFile' },
-                { ext: 'cif', buttonClass: 'success', iconClass: 'cube', iconText: '查看结构', showFunction: 'showVaspFile' }
+                { ext: 'png', buttonClass: 'primary', iconClass: 'image', iconText: 'View image', showFunction: 'showImageFile' },
+                { ext: 'vasp', buttonClass: 'success', iconClass: 'cube', iconText: 'View structure', showFunction: 'showVaspFile' },
+                { ext: 'xyz', buttonClass: 'success', iconClass: 'cube', iconText: 'View structure', showFunction: 'showVaspFile' },
+                { ext: 'cif', buttonClass: 'success', iconClass: 'cube', iconText: 'View structure', showFunction: 'showVaspFile' }
             ];
             
             let processedContent = content;
@@ -690,9 +690,9 @@
         
         // 处理.png图片文件
         try {
-            processedContent = processFilePathsSafely(processedContent, 'png', 'primary', 'image', '查看图片', 'showImageFile');
+            processedContent = processFilePathsSafely(processedContent, 'png', 'primary', 'image', 'Show image', 'showImageFile');
         } catch (error) {
-            console.warn('处理PNG文件路径时出错:', error);
+            console.warn('Error processing PNG file path:', error);
             // 回退到简单的正则处理，但增加安全检查
             const imagePattern = /(?<!<[^>]*?)([^\s'"<>]*\.png)\b(?![^<]*?>)/gi;
             processedContent = processedContent.replace(imagePattern, function(match, filePath, offset, string) {
@@ -715,7 +715,7 @@
                 return '<span class="file-link-container">' +
                         '<code class="file-path">' + cleanPath + '</code>' +
                         '<button class="btn btn-sm btn-outline-primary ms-2" id="' + buttonId + '" onclick="showImageFile(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
-                            '<i class="fas fa-image"></i> 查看图片' +
+                            '<i class="fas fa-image"></i> View image' +
                         '</button>' +
                     '</span>';
             });
@@ -723,9 +723,9 @@
         
         // 处理.vasp晶体结构文件
         try {
-            processedContent = processFilePathsSafely(processedContent, 'vasp', 'success', 'cube', '查看结构', 'showVaspFile');
+            processedContent = processFilePathsSafely(processedContent, 'vasp', 'success', 'cube', 'Show structure', 'showVaspFile');
         } catch (error) {
-            console.warn('处理VASP文件路径时出错:', error);
+            console.warn('Error processing VASP file path:', error);
             // 回退到简单的正则处理，但增加安全检查
             const vaspPattern = /(?<!<[^>]*?)([^\s'"<>]*\.vasp)\b(?![^<]*?>)/gi;
             processedContent = processedContent.replace(vaspPattern, function(match, filePath, offset, string) {
@@ -748,7 +748,7 @@
                 return '<span class="file-link-container">' +
                         '<code class="file-path">' + cleanPath + '</code>' +
                         '<button class="btn btn-sm btn-outline-success ms-2" id="' + buttonId + '" onclick="showVaspFile(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
-                            '<i class="fas fa-cube"></i> 查看结构' +
+                            '<i class="fas fa-cube"></i> View structure' +
                         '</button>' +
                     '</span>';
             });
@@ -779,7 +779,7 @@
                 return '<span class="file-link-container">' +
                         '<code class="file-path">' + cleanPath + '</code>' +
                         '<button class="btn btn-sm btn-outline-success ms-2" id="' + buttonId + '" onclick="showVaspFile(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
-                            '<i class="fas fa-cube"></i> 查看结构' +
+                            '<i class="fas fa-cube"></i> View structure' +
                         '</button>' +
                     '</span>';
             });
@@ -810,7 +810,7 @@
                 return '<span class="file-link-container">' +
                         '<code class="file-path">' + cleanPath + '</code>' +
                         '<button class="btn btn-sm btn-outline-success ms-2" id="' + buttonId + '" onclick="showVaspFile(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
-                            '<i class="fas fa-cube"></i> 查看结构' +
+                            '<i class="fas fa-cube"></i> View structure' +
                         '</button>' +
                     '</span>';
             });
@@ -825,7 +825,7 @@
             try {
                 // 尝试解析JSON并转换为表格
                 const jsonData = JSON.parse(content);
-                const title = type === 'tool_input' ? 'Tool 输入参数' : 'Tool 输出结果';
+                const title = type === 'tool_input' ? 'Tool input' : 'Tool output';
                 return jsonToTable(jsonData, title);
             } catch (e) {
                 // 如果不是JSON，按普通文本处理
@@ -866,27 +866,27 @@
         
         // 检查当前状态是否已经正确，避免不必要的更新
         let currentStatus = '';
-        if (mainTaskBadge.textContent.trim() === '已完成') currentStatus = 'completed';
-        else if (mainTaskBadge.textContent.trim() === '执行中') currentStatus = 'running';
-        else if (mainTaskBadge.textContent.trim() === '失败') currentStatus = 'failed';
+        if (mainTaskBadge.textContent.trim() === 'Completed') currentStatus = 'completed';
+        else if (mainTaskBadge.textContent.trim() === 'Running') currentStatus = 'running';
+        else if (mainTaskBadge.textContent.trim() === 'Failed') currentStatus = 'failed';
         else currentStatus = 'pending';
         
         // 只有当状态真的发生变化时才更新
         if (currentStatus !== status) {
-            console.log('主任务状态更新: ' + currentStatus + ' → ' + status);
+            console.log('Main task status updated: ' + currentStatus + ' → ' + status);
             mainTaskBadge.className = 'badge main-task-status-badge';
             if (status === 'completed') {
                 mainTaskBadge.className += ' bg-success';
-                mainTaskBadge.textContent = '已完成';
+                mainTaskBadge.textContent = 'Completed';
             } else if (status === 'running') {
                 mainTaskBadge.className += ' bg-primary';
-                mainTaskBadge.textContent = '执行中';
+                mainTaskBadge.textContent = 'Running';
             } else if (status === 'failed') {
                 mainTaskBadge.className += ' bg-danger';
-                mainTaskBadge.textContent = '失败';
+                mainTaskBadge.textContent = 'Failed';
             } else {
                 mainTaskBadge.className += ' bg-secondary';
-                mainTaskBadge.textContent = '等待中';
+                mainTaskBadge.textContent = 'Waiting';
             }
         }
     }
@@ -940,14 +940,14 @@
         // 防抖保护：避免短时间内重复更新
         const now = Date.now();
         if (isUpdating || (now - lastUpdateTime < 500)) {
-            console.log('⏭️ 跳过历史记录更新（防抖保护）');
+            console.log('⏭️ Skip history record update');
             return;
         }
         
         isUpdating = true;
         lastUpdateTime = now;
         
-        console.log('🔄 开始更新历史记录列表，日志数量:', logs.length);
+        console.log('🔄 Start updating history record list, log number:', logs.length);
         
         try {
             // 保存当前选中的项目
@@ -955,7 +955,7 @@
             const activeTimestamp = activeItem ? activeItem.dataset.timestamp : null;
             
             // 总是完全重建列表以避免重复显示问题
-            console.log('📝 完全重建历史记录列表');
+            console.log('📝 Completely rebuild history record list');
             historyContainer.innerHTML = '';
             
             // 重新创建所有历史记录项
@@ -972,7 +972,7 @@
                 }
             }
             
-            console.log('✅ 历史记录列表更新完成，共', logs.length, '个项目');
+            console.log('✅ History record list updated, total', logs.length, 'items');
         } finally {
             // 确保在任何情况下都会重置更新状态
             setTimeout(() => {
@@ -1005,22 +1005,22 @@
             badgeClass = 'bg-success text-white';
             badgeIcon = 'fas fa-robot';
             specificName = log.role_name;
-            badgeText = specificName ? specificName + ' 输入' : 'Agent输入';
+            badgeText = specificName ? specificName + ' input' : 'Agent input';
         } else if (log.type === 'agent_output') {
             badgeClass = 'bg-warning text-dark';
             badgeIcon = 'fas fa-robot';
             specificName = log.role_name;
-            badgeText = specificName ? specificName + ' 输出' : 'Agent输出';
+            badgeText = specificName ? specificName + ' output' : 'Agent output';
         } else if (log.type === 'tool_input') {
             badgeClass = 'bg-danger text-white';
             badgeIcon = 'fas fa-tools';
             specificName = log.role_name;
-            badgeText = specificName ? specificName + ' 调用' : '工具调用';
+            badgeText = specificName ? specificName + ' call' : 'Tool call';
         } else if (log.type === 'tool_output') {
             badgeClass = 'bg-info text-white';
             badgeIcon = 'fas fa-tools';
             specificName = log.role_name;
-            badgeText = specificName ? specificName + ' 结果' : '工具结果';
+            badgeText = specificName ? specificName + ' result' : 'Tool result';
         }
         
         historyItem.innerHTML = 
@@ -1164,10 +1164,10 @@
             let mermaidCode = 'graph LR\n';
             
             if (activities.length === 0) {
-                mermaidCode += '    Start([开始]) --> End([结束])\n';
+                mermaidCode += '    Start([Start]) --> End([End])\n';
             } else {
                 // 添加开始节点
-                mermaidCode += '    Start([开始])\n';
+                mermaidCode += '    Start([Start])\n';
                 
                 // 创建Agent节点 - 使用圆角长方形
                 activities.forEach((activity, index) => {
@@ -1175,12 +1175,12 @@
                     let safeName = activity.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
                     if (!safeName || safeName.match(/^Agent[-\s]*\d*$/i)) {
                         // 如果是默认名称或空名称，使用更具体的名称
-                        safeName = '代理' + (index + 1);
+                        safeName = 'Agent' + (index + 1);
                     }
                     // 移除常见的前缀
                     safeName = safeName.replace(/^(Agent|agent|代理)[-\s]*/i, '');
                     if (!safeName) {
-                        safeName = '代理' + (index + 1);
+                        safeName = 'Agent' + (index + 1);
                     }
                     if (safeName.length > 25) {
                         safeName = safeName.substring(0, 22) + '...';
@@ -1202,12 +1202,12 @@
                         let safeToolName = tool.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
                         if (!safeToolName || safeToolName.match(/^Tool[-\s]*\d*$/i)) {
                             // 如果是默认名称或空名称，使用更描述性的名称
-                            safeToolName = '工具' + (toolIndex + 1);
+                            safeToolName = 'Tool' + (toolIndex + 1);
                         }
                         // 移除常见的前缀
-                        safeToolName = safeToolName.replace(/^(Tool|tool|工具)[-\s]*/i, '');
+                        safeToolName = safeToolName.replace(/^(Tool|tool|Tool)[-\s]*/i, '');
                         if (!safeToolName) {
-                            safeToolName = '工具' + (toolIndex + 1);
+                            safeToolName = 'Tool' + (toolIndex + 1);
                         }
                         if (safeToolName.length > 20) {
                             safeToolName = safeToolName.substring(0, 17) + '...';
@@ -1227,7 +1227,7 @@
                 // 连接开始和结束节点
                 if (activities.length > 0) {
                     mermaidCode += '    Start --> ' + activities[0].id + '\n';
-                    mermaidCode += '    ' + activities[activities.length-1].id + ' --> End([结束])\n';
+                    mermaidCode += '    ' + activities[activities.length-1].id + ' --> End([End])\n';
                 }
                 
                 // 注意：点击事件现在通过JavaScript手动绑定，不在Mermaid代码中声明
@@ -1299,7 +1299,7 @@
                         console.error('回退渲染也失败:', fallbackError);
                         workflowContainer.innerHTML = 
                             '<div class="alert alert-warning">' +
-                                '<i class="fas fa-exclamation-triangle"></i> 流程图渲染失败' +
+                                '<i class="fas fa-exclamation-triangle"></i> Workflow rendering failed' +
                                 '<br><small class="text-muted">Mermaid错误: ' + error.message + '</small>' +
                             '</div>';
                     }
@@ -1313,10 +1313,10 @@
             }
             
         } catch (error) {
-            console.error('生成流程图失败:', error);
+            console.error('Workflow generation failed:', error);
             workflowContainer.innerHTML = 
                 '<div class="alert alert-warning">' +
-                    '<i class="fas fa-exclamation-triangle"></i> 流程图生成失败' +
+                    '<i class="fas fa-exclamation-triangle"></i> Workflow generation failed' +
                     '<br><small class="text-muted">错误: ' + error.message + '</small>' +
                 '</div>';
         } finally {
@@ -1437,7 +1437,7 @@
                 
                 if (typeMatch && timestampMatch && roleMatch) {
                     targetItem = item;
-                    console.log('找到匹配项:', {
+                    console.log('Found matching item:', {
                         type: itemType,
                         timestamp: timestamp,
                         roleName: roleName,
@@ -1468,7 +1468,7 @@
                 targetItem.click();
             }, 300);
         } else {
-            console.warn('未找到对应的历史记录项:', {
+            console.warn('No matching history record item found:', {
                 type: type,
                 activity: activity,
                 candidatesCount: candidates.length,
@@ -1485,7 +1485,7 @@
             
             if (response.ok) {
                 const data = await response.json();
-                console.log('获取任务数据，状态: ' + data.task.status + '，日志数量: ' + data.logs.length + '，强制更新: ' + forceUpdate);
+                console.log('Get task data, status: ' + data.task.status + ', log number: ' + data.logs.length + ', force update: ' + forceUpdate);
                 
                 // 调试日志数据（已移除以减少控制台噪音）
                 
@@ -1510,7 +1510,7 @@
                 // 如果是初次加载或强制更新，或者数据确实发生了变化
                 if (forceUpdate || !currentTaskData || hasStatusChange || hasLogChange || hasContentChange) {
                     
-                    console.log('数据发生变化，更新界面:', {
+                    console.log('Data changed, update interface:', {
                         forceUpdate,
                         hasStatusChange,
                         hasLogChange,
@@ -1526,15 +1526,15 @@
                     
                     // 更新历史记录和流程图 - 只有在有日志变化或强制更新时才更新
                     if ((forceUpdate || hasLogChange || hasContentChange) && !skipHistoryUpdate) {
-                        console.log('触发历史记录更新...');
+                        console.log('Trigger history record update...');
                         updateHistoryList(data.logs);
                         await generateWorkflowChart(data.logs);
                     } else if (skipHistoryUpdate) {
-                        console.log('跳过历史记录更新（skipHistoryUpdate=true）');
+                        console.log('Skip history record update (skipHistoryUpdate=true)');
                         // 即使跳过历史记录更新，也要更新流程图
                         await generateWorkflowChart(data.logs);
                     } else {
-                        console.log('跳过历史记录更新（无相关变化）');
+                        console.log('Skip history record update (no related changes)');
                     }
                     
                     currentTaskData = data;
@@ -1543,22 +1543,22 @@
                     if (data.task.result && data.task.status === 'completed') {
                         const resultContainer = document.getElementById('final-result-content');
                         if (resultContainer && (!resultContainer.innerHTML || resultContainer.innerHTML.includes('<!-- 内容将通过JavaScript动态渲染 -->'))) {
-                            console.log('📝 更新最终执行结果...');
+                            console.log('📝 Update final execution result...');
                             const renderedResult = renderContent(data.task.result, 'agent_output');
                             resultContainer.innerHTML = renderedResult;
-                            console.log('✅ 最终执行结果更新完成');
+                            console.log('✅ Final execution result updated');
                         }
                     }
                 } else {
-                    console.log('数据无变化，跳过更新');
+                    console.log('No data change, skip update');
                 }
                 
                 return data;
             } else {
-                console.error('获取数据失败，HTTP状态:', response.status);
+                console.error('Get data failed, HTTP status:', response.status);
             }
         } catch (error) {
-            console.error('获取最新数据失败:', error);
+            console.error('Get latest data failed:', error);
         }
         return null;
     }
@@ -1567,47 +1567,47 @@
     function startAutoRefresh() {
         // 确保没有重复的定时器
         if (refreshInterval) {
-            console.log('清理已存在的定时器');
+            console.log('Clear existing timer');
             clearInterval(refreshInterval);
             refreshInterval = null;
         }
         
-        console.log('🔄 启动自动刷新定时器 - 每5秒检查一次更新');
+        console.log('🔄 Start auto refresh timer - check update every 5 seconds');
         let refreshCount = 0;
         
         refreshInterval = setInterval(async () => {
             try {
                 refreshCount++;
-                console.log(`📡 自动刷新 #${refreshCount}:`, new Date().toLocaleTimeString());
+                console.log(`📡 Auto refresh #${refreshCount}:`, new Date().toLocaleTimeString());
                 
                 showRefreshIndicator();
                 const data = await fetchLatestData();
                 
                 if (!data) {
-                    console.warn('⚠️ 获取数据失败，将在下次重试');
+                    console.warn('⚠️ Get data failed, will retry next time');
                     return;
                 }
                 
                 // 如果任务已完成或失败，停止自动刷新
                 if (data.task.status === 'completed' || data.task.status === 'failed') {
-                    console.log('✅ 任务状态变为 ' + data.task.status + '，停止自动刷新');
+                    console.log('✅ Task status changed to ' + data.task.status + ', stop auto refresh');
                     clearInterval(refreshInterval);
                     refreshInterval = null;
                     
                     // 更新刷新指示器显示最终状态
                     const indicator = document.getElementById('refresh-indicator');
                     if (indicator) {
-                        indicator.textContent = '✅ 任务已完成';
+                        indicator.textContent = '✅ Task completed';
                         indicator.classList.add('active');
                         setTimeout(() => indicator.classList.remove('active'), 3000);
                     }
                 }
             } catch (error) {
-                console.error('❌ 自动刷新过程中出错:', error);
+                console.error('❌ Error during auto refresh:', error);
             }
-        }, 5000); // 5秒刷新一次，减少频率避免重复问题
+        }, 5000); // 5 seconds refresh once, reduce frequency to avoid repeated problems
         
-        console.log('✅ 自动刷新定时器已启动');
+        console.log('✅ Auto refresh timer started');
     }
     
     // 历史记录点击事件
@@ -1624,13 +1624,13 @@
             
             let title = '';
             if (type === 'agent_input') {
-                title = (specificName ? specificName : 'Agent') + ' 输入 - ' + timestamp;
+                title = (specificName ? specificName : 'Agent') + ' input - ' + timestamp;
             } else if (type === 'agent_output') {
-                title = (specificName ? specificName : 'Agent') + ' 输出 - ' + timestamp;
+                title = (specificName ? specificName : 'Agent') + ' output - ' + timestamp;
             } else if (type === 'tool_input') {
-                title = (specificName ? specificName : 'Tool') + ' 调用 - ' + timestamp;
+                title = (specificName ? specificName : 'Tool') + ' call - ' + timestamp;
             } else if (type === 'tool_output') {
-                title = (specificName ? specificName : 'Tool') + ' 结果 - ' + timestamp;
+                title = (specificName ? specificName : 'Tool') + ' result - ' + timestamp;
             } else {
                 title = type + ' - ' + timestamp;
             }
@@ -1658,10 +1658,10 @@
             if (!refreshInterval) {
                 const data = await fetchLatestData(false); // 不强制更新，避免不必要的状态闪烁
                 if (data && data.task.status !== 'completed' && data.task.status !== 'failed') {
-                    console.log('页面重新可见，任务状态: ' + data.task.status + '，重新开始自动刷新');
+                    console.log('Page reappeared, task status: ' + data.task.status + ', restart auto refresh');
                     startAutoRefresh();
                 } else {
-                    console.log('页面重新可见，任务状态: ' + (data?.task.status || '未知') + '，无需自动刷新');
+                    console.log('Page reappeared, task status: ' + (data?.task.status || 'Unknown') + ', no auto refresh');
                 }
             }
         }
@@ -1683,7 +1683,7 @@
     function initializeJSMol() {
         if (typeof Jmol !== 'undefined') {
             Jmol.setDocument(document);
-            console.log('JSMol已初始化');
+            console.log('JSMol initialized');
         }
     }
     
@@ -1708,21 +1708,21 @@
         const encodedPath = encodedSegments.join('/');
         const apiUrl = '/api/files/' + taskId + '/' + encodedPath;
         
-        console.log('原始路径:', filePath);
-        console.log('处理后路径:', processedPath);
-        console.log('编码后路径:', encodedPath);
-        console.log('完整API URL:', apiUrl);
+        console.log('Original path:', filePath);
+        console.log('Processed path:', processedPath);
+        console.log('Encoded path:', encodedPath);
+        console.log('Full API URL:', apiUrl);
         
         // 更新标题
-        displayTitle.innerHTML = '<i class="fas fa-image"></i> 图片预览: ' + filePath;
+        displayTitle.innerHTML = '<i class="fas fa-image"></i> Image preview: ' + filePath;
         
         // 显示加载状态
         displayContent.innerHTML = `
             <div class="text-center">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="sr-only">加载中...</span>
+                    <span class="sr-only">Loading...</span>
                 </div>
-                <div class="mt-2">正在加载图片...</div>
+                <div class="mt-2">Loading image...</div>
             </div>
         `;
         
@@ -1737,21 +1737,21 @@
                 '<div class="text-center">' +
                     '<img src="' + apiUrl + '" class="content-image" alt="' + filePath + '">' +
                     '<div class="mt-2">' +
-                        '<small class="text-muted">文件路径: ' + filePath + '</small>' +
+                        '<small class="text-muted">File path: ' + filePath + '</small>' +
                     '</div>' +
                 '</div>';
-            console.log('图片加载成功:', filePath);
+            console.log('Image loaded successfully:', filePath);
         };
         
         img.onerror = function() {
             displayContent.innerHTML = 
                 '<div class="alert alert-warning">' +
-                    '<i class="fas fa-exclamation-triangle"></i> 无法加载图片' +
-                    '<br><strong>文件路径:</strong> ' + filePath +
+                    '<i class="fas fa-exclamation-triangle"></i> Failed to load image' +
+                    '<br><strong>File path:</strong> ' + filePath +
                     '<br><strong>API URL:</strong> ' + apiUrl +
-                    '<br><small class="text-muted">请检查文件是否存在或路径是否正确</small>' +
+                    '<br><small class="text-muted">Please check if the file exists or the path is correct</small>' +
                 '</div>';
-            console.error('图片加载失败:', filePath);
+            console.error('Image loading failed:', filePath);
         };
         
         img.src = apiUrl;
@@ -1778,10 +1778,10 @@
         const encodedPath = encodedSegments.join('/');
         const apiUrl = '/api/files/' + taskId + '/' + encodedPath;
         
-        console.log('原始路径:', filePath);
-        console.log('处理后路径:', processedPath);
-        console.log('编码后路径:', encodedPath);
-        console.log('完整API URL:', apiUrl);
+        console.log('Original path:', filePath);
+        console.log('Processed path:', processedPath);
+        console.log('Encoded path:', encodedPath);
+        console.log('Full API URL:', apiUrl);
         
         // 更新标题
         displayTitle.innerHTML = '<i class="fas fa-cube"></i> 晶体结构: ' + filePath;
@@ -1791,19 +1791,19 @@
         displayContent.innerHTML = 
             '<div class="jsmol-container">' +
                 '<div class="text-center mb-3">' +
-                    '<h6>晶体结构可视化</h6>' +
-                    '<small class="text-muted">文件: ' + filePath + '</small>' +
+                    '<h6>Crystal structure visualization</h6>' +
+                    '<small class="text-muted">File: ' + filePath + '</small>' +
                 '</div>' +
                 '<div id="' + jsmolId + '" style="width: 500px; height: 500px; margin: 0 auto; background-color: #fff; border: 1px solid #ccc; border-radius: 5px;"></div>' +
                 '<div class="mt-3">' +
                     '<button class="btn btn-sm btn-primary" onclick="loadVaspStructure(\'' + jsmolId + '\', \'' + apiUrl + '\')">' +
-                        '<i class="fas fa-play"></i> 加载结构' +
+                        '<i class="fas fa-play"></i> load structure' +
                     '</button>' +
                     '<button class="btn btn-sm btn-secondary ms-2" onclick="resetVaspView(\'' + jsmolId + '\')">' +
-                        '<i class="fas fa-redo"></i> 重置视图' +
+                        '<i class="fas fa-redo"></i> reset view' +
                     '</button>' +
                     '<button class="btn btn-sm btn-info ms-2" onclick="downloadFile(\'' + apiUrl + '\', \'' + filePath + '\')">' +
-                        '<i class="fas fa-download"></i> 下载文件' +
+                        '<i class="fas fa-download"></i> download file' +
                     '</button>' +
                 '</div>' +
             '</div>';
@@ -1812,7 +1812,7 @@
         displayArea.style.display = 'block';
         displayArea.scrollIntoView({ behavior: 'smooth' });
         
-        console.log('准备显示VASP结构:', filePath);
+        console.log('Prepare to display VASP structure:', filePath);
     }
     
     // 关闭文件显示区域
@@ -1824,7 +1824,7 @@
         const displayContent = document.getElementById('file-display-content');
         displayContent.innerHTML = '';
         
-        console.log('关闭文件显示区域');
+        console.log('Close file display area');
     }
     
     // 下载文件
@@ -1844,8 +1844,8 @@
             if (container) {
                 container.innerHTML = `
                     <div class="alert alert-warning">
-                        ⚠️ JSMol未加载完成，请稍后再试
-                        <br><small class="text-muted">JSMol正在从CDN加载中...</small>
+                        ⚠️ JSMol not loaded, please try again later
+                        <br><small class="text-muted">JSMol is loading from CDN...</small>
                     </div>
                 `;
             }
@@ -1854,7 +1854,7 @@
         
         const container = document.getElementById(containerId);
         if (!container) {
-            console.error('找不到JSMol容器:', containerId);
+            console.error('JSMol container not found:', containerId);
             return;
         }
         
@@ -1862,9 +1862,9 @@
         container.innerHTML = `
             <div class="text-center">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="sr-only">加载中...</span>
+                    <span class="sr-only">Loading...</span>
                 </div>
-                <div class="mt-2">正在加载晶体结构...</div>
+                <div class="mt-2">Loading crystal structure...</div>
             </div>
         `;
         
@@ -1882,16 +1882,16 @@
             use: "HTML5",
             j2sPath: "https://chemapps.stolaf.edu/jmol/jsmol/j2s",
             readyFunction: function(applet) {
-                console.log('JSMol applet ' + applet._id + ' 已就绪，加载文件: ' + fileUrl);
+                console.log('JSMol applet ' + applet._id + ' ready, load file: ' + fileUrl);
             },
             script: 
                 'load "' + fileUrl + '";' +
                 'if (_loadScript.error) {' +
-                    'print "文件加载失败: ' + fileUrl + '";' +
+                    'print "File loading failed: ' + fileUrl + '";' +
                     'background white;' +
                     'color red;' +
                     'set echo top center;' +
-                    'echo "文件加载失败";' +
+                    'echo "File loading failed";' +
                 '} else {' +
                     'spacefill 20%;' +
                     'wireframe 0.15;' +
@@ -1911,17 +1911,17 @@
                 container.innerHTML = appletHtml;
                 jsmolApplets[containerId] = appletName;
                 
-                console.log('正在加载晶体结构: ' + fileUrl);
+                console.log('Loading crystal structure: ' + fileUrl);
             }, 100);
         } catch (error) {
-            console.error('加载晶体结构失败:', error);
+            console.error('Loading crystal structure failed:', error);
             container.innerHTML = 
                 '<div class="alert alert-danger">' +
-                    '❌ 加载晶体结构失败: ' + error.message +
-                    '<br><small class="text-muted">请检查文件是否存在: ' + fileUrl + '</small>' +
+                    '❌ Loading crystal structure failed: ' + error.message +
+                    '<br><small class="text-muted">Please check if the file exists: ' + fileUrl + '</small>' +
                     '<div class="mt-2">' +
                         '<button class="btn btn-sm btn-outline-primary" onclick="downloadFile(\'' + fileUrl + '\', \'structure.vasp\')">' +
-                            '<i class="fas fa-download"></i> 下载文件查看' +
+                            '<i class="fas fa-download"></i> download file to view' +
                         '</button>' +
                     '</div>' +
                 '</div>';
@@ -1934,16 +1934,16 @@
         if (appletName && typeof Jmol !== 'undefined') {
             try {
                 Jmol.script(appletName, "rotate best; zoom 100; center;");
-                console.log('重置晶体结构视图');
+                console.log('Reset crystal structure view');
             } catch (error) {
-                console.error('重置视图失败:', error);
+                console.error('Reset view failed:', error);
             }
         }
     }
     
     // 页面加载完成后开始自动刷新
     document.addEventListener('DOMContentLoaded', async function() {
-        console.log('🚀 开始初始化Task详情页面...');
+        console.log('🚀 Start initializing Task detail page...');
         
         // 初始化Marked配置
         if (typeof marked !== 'undefined') {
@@ -1953,9 +1953,9 @@
                 headerIds: false,
                 mangle: false
             });
-            console.log('✅ Marked已初始化');
+            console.log('✅ Marked initialized');
         } else {
-            console.warn('⚠️ Marked库未加载');
+            console.warn('⚠️ Marked library not loaded');
         }
         
         // 初始化Mermaid
@@ -1979,9 +1979,9 @@
                     gridColor: '#e0e0e0'
                 }
             });
-            console.log('✅ Mermaid已初始化 (版本: ' + mermaid.version + ')');
+            console.log('✅ Mermaid initialized (version: ' + mermaid.version + ')');
         } else {
-            console.warn('⚠️ Mermaid库未加载');
+            console.warn('⚠️ Mermaid library not loaded');
         }
         
         // 初始化JSMol
@@ -1991,17 +1991,17 @@
         const existingHistoryItems = document.querySelectorAll('.history-item');
         const hasStaticContent = existingHistoryItems.length > 0;
         
-        console.log(`📡 开始获取初始数据... (检测到${hasStaticContent ? '有' : '无'}静态内容，当前${existingHistoryItems.length}个历史项)`);
+        console.log(`📡 Start getting initial data... (detected ${hasStaticContent ? 'has' : 'no'} static content, currently ${existingHistoryItems.length} history items)`);
         
         // 初始化获取一次数据，如果有静态内容就跳过历史记录更新以避免重复
         const initialData = await fetchLatestData(true, hasStaticContent);
         
         if (!initialData) {
-            console.error('❌ 无法获取初始数据');
+            console.error('❌ Failed to get initial data');
             return;
         }
         
-        console.log('✅ 初始数据获取成功:', {
+        console.log('✅ Initial data obtained successfully:', {
             status: initialData.task.status,
             logCount: initialData.logs.length,
             hasStaticContent: hasStaticContent
@@ -2010,17 +2010,17 @@
         // 只有在没有静态内容时才需要手动更新历史记录
         // 如果有静态内容，fetchLatestData已经跳过了历史更新，这里也不需要再更新
         if (!hasStaticContent) {
-            console.log('🔄 更新历史记录列表（无静态内容）...');
+            console.log('🔄 Update history record list (no static content)...');
             updateHistoryList(initialData.logs);
         } else {
-            console.log('⏭️ 跳过历史记录更新（使用静态渲染内容）');
+            console.log('⏭️ Skip history record update (using static rendering content)');
             // 保存当前数据供后续比较
             currentTaskData = initialData;
         }
         
         // 生成初始流程图
         if (initialData && initialData.logs) {
-            console.log('🎨 开始生成初始流程图...');
+            console.log('🎨 Start generating initial workflow chart...');
             await generateWorkflowChart(initialData.logs);
         }
         
@@ -2031,29 +2031,29 @@
             let resultData = null;
             if (initialData && initialData.task.result) {
                 resultData = initialData.task.result;
-                console.log('📝 使用API数据渲染最终执行结果...');
+                console.log('📝 Use API data to render final execution result...');
             } else {
                 // 检查是否有静态的task.result数据（通过Jinja2模板传递的）
                 const staticResultElement = document.querySelector('[data-static-result]');
                 if (staticResultElement) {
                     resultData = staticResultElement.getAttribute('data-static-result');
-                    console.log('📝 使用静态数据渲染最终执行结果...');
+                    console.log('📝 Use static data to render final execution result...');
                 }
             }
             
             if (resultData) {
                 const renderedResult = renderContent(resultData, 'agent_output');
                 resultContainer.innerHTML = renderedResult;
-                console.log('✅ 最终执行结果渲染完成');
+                console.log('✅ Final execution result rendered');
             }
         }
         
         // 只有当任务还在运行或等待时才开始自动刷新
         if (initialData && initialData.task.status !== 'completed' && initialData.task.status !== 'failed') {
-            console.log('🔄 任务状态: ' + initialData.task.status + '，开始自动刷新');
+            console.log('🔄 Task status: ' + initialData.task.status + ', start auto refresh');
             startAutoRefresh();
         } else {
-            console.log('⏹️ 任务状态: ' + (initialData?.task.status || '未知') + '，无需自动刷新');
+            console.log('⏹️ Task status: ' + (initialData?.task.status || 'Unknown') + ', no auto refresh');
             // 清理可能存在的定时器
             if (refreshInterval) {
                 clearInterval(refreshInterval);
@@ -2061,7 +2061,7 @@
             }
         }
         
-        console.log('🎉 Task详情页面初始化完成!');
+        console.log('🎉 Task detail page initialized!');
     });
     
     // 页面卸载时清理

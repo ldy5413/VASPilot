@@ -47,7 +47,7 @@ Flask服务      任务规划        工具调用      任务提交     图表�
 
 ```bash
 # 克隆项目到本地
-git clone https://github.com/your-username/vaspilot.git
+git clone https://github.com/JiaxuanLiu-Arsko/VASPilot.git
 cd vaspilot
 
 # 安装项目（开发模式）

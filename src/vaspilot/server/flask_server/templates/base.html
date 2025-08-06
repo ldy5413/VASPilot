@@ -36,14 +36,14 @@
                 <!-- 任务提交表单 -->
                 <div class="card mb-3">
                     <div class="card-body">
-                        <h6 class="card-title">提交新任务</h6>
+                        <h6 class="card-title">Submit new mission</h6>
                         <form id="task-form">
                             <div class="mb-3">
-                                <textarea id="task-description" class="form-control" rows="3" placeholder="请输入任务描述..." required></textarea>
+                                <textarea id="task-description" class="form-control" rows="3" placeholder="Please enter the mission description..." required></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary btn-sm w-100">
                                 <span id="submit-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
-                                <span id="submit-text">提交任务</span>
+                                <span id="submit-text">Submit mission</span>
                             </button>
                         </form>
                         <div id="submit-message" class="mt-2"></div>
@@ -66,10 +66,10 @@
                                     {% elif task.status == 'failed' %}bg-danger
                                     {% else %}bg-secondary
                                     {% endif %}">
-                                    {% if task.status == 'completed' %}已完成
-                                    {% elif task.status == 'running' %}执行中
-                                    {% elif task.status == 'failed' %}失败
-                                    {% else %}等待中
+                                    {% if task.status == 'completed' %}Finished
+                                    {% elif task.status == 'running' %}Running
+                                    {% elif task.status == 'failed' %}Failed
+                                    {% else %}Waiting
                                     {% endif %}
                                 </span>
                             </div>
@@ -83,30 +83,30 @@
             <div class="col-md-9 main-content p-3">
                 {% block content %}
                 <div class="text-center text-muted mt-5">
-                    <h3>欢迎使用 Flask Crew AI 服务器</h3>
-                    <p class="lead">轻量级单文件解决方案</p>
+                    <h3>Welcome to use VASPilot</h3>
+                    <p class="lead">VASPilot is a automatic tool for running VASP calculations.</p>
                     <div class="row mt-4">
                         <div class="col-md-4">
                             <div class="card h-100">
                                 <div class="card-body">
-                                    <h5 class="card-title">📝 提交任务</h5>
-                                    <p class="card-text">在左侧面板输入任务描述，一键提交。</p>
+                                    <h5 class="card-title">📝 Submit mission</h5>
+                                    <p class="card-text">Input the mission description in the left panel, and submit it with one click.</p>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="card h-100">
                                 <div class="card-body">
-                                    <h5 class="card-title">📋 查看历史</h5>
-                                    <p class="card-text">点击左侧任务卡片查看执行详情。</p>
+                                    <h5 class="card-title">📋 View history</h5>
+                                    <p class="card-text">Click the task card on the left to view the execution details.</p>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="card h-100">
                                 <div class="card-body">
-                                    <h5 class="card-title">🔄 实时更新</h5>
-                                    <p class="card-text">自动刷新任务状态和进度。</p>
+                                    <h5 class="card-title">🔄 Real-time update</h5>
+                                    <p class="card-text">Automatically refresh the task status and progress.</p>
                                 </div>
                             </div>
                         </div>
@@ -133,13 +133,13 @@
             const messageDiv = document.getElementById('submit-message');
             
             if (!taskDescription) {
-                showMessage('请输入任务描述', 'danger');
+                showMessage('Please enter the mission description', 'danger');
                 return;
             }
             
             submitBtn.disabled = true;
             spinner.classList.remove('d-none');
-            submitText.textContent = '提交中...';
+            submitText.textContent = 'Submitting...';
             
             try {
                 const response = await fetch('/submit', {
@@ -158,11 +158,11 @@
                     showMessage(data.error, 'danger');
                 }
             } catch (error) {
-                showMessage('网络错误: ' + error.message, 'danger');
+                showMessage('Network error: ' + error.message, 'danger');
             } finally {
                 submitBtn.disabled = false;
                 spinner.classList.add('d-none');
-                submitText.textContent = '提交任务';
+                submitText.textContent = 'Submit mission';
             }
         });
         
@@ -196,7 +196,7 @@
                     return await response.json();
                 }
             } catch (error) {
-                console.error('获取任务列表失败:', error);
+                console.error('Failed to get task list:', error);
             }
             return null;
         }
@@ -216,10 +216,10 @@
                     const currentStatus = currentCard.querySelector('.status-badge')?.textContent.trim();
                     
                     let expectedStatus = '';
-                    if (task.status === 'completed') expectedStatus = '已完成';
-                    else if (task.status === 'running') expectedStatus = '执行中';
-                    else if (task.status === 'failed') expectedStatus = '失败';
-                    else expectedStatus = '等待中';
+                    if (task.status === 'completed') expectedStatus = 'Completed';
+                    else if (task.status === 'running') expectedStatus = 'Running';
+                    else if (task.status === 'failed') expectedStatus = 'Failed';
+                    else expectedStatus = 'Waiting';
                     
                     if (currentStatus !== expectedStatus || currentCard.dataset.taskId !== task.conversation_id) {
                         hasChanges = true;
@@ -228,12 +228,12 @@
                 }
                 
                 if (!hasChanges) {
-                    console.log('任务列表无变化，跳过更新');
+                    console.log('Task list unchanged, skip update');
                     return;
                 }
             }
             
-            console.log('任务列表有变化，开始更新');
+            console.log('Task list changed, start update');
             
             // 保存用户输入
             const taskInput = document.getElementById('task-description');
@@ -249,16 +249,16 @@
                 taskCard.dataset.taskId = task.conversation_id;
                 
                 let statusClass = 'bg-secondary';
-                let statusText = '等待中';
+                let statusText = 'Waiting';
                 if (task.status === 'completed') {
                     statusClass = 'bg-success';
-                    statusText = '已完成';
+                    statusText = 'Completed';
                 } else if (task.status === 'running') {
                     statusClass = 'bg-primary';
-                    statusText = '执行中';
+                    statusText = 'Running';
                 } else if (task.status === 'failed') {
                     statusClass = 'bg-danger';
-                    statusText = '失败';
+                    statusText = 'Failed';
                 }
                 
                 const taskDescription = task.task_description.length > 50 
@@ -287,7 +287,7 @@
                     taskInput.focus();
                     taskInput.setSelectionRange(cursorPosition, cursorPosition);
                 }
-                console.log('已恢复用户输入内容');
+                console.log('User input content restored');
             }
         }
         

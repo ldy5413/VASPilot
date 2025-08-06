@@ -2,7 +2,7 @@ import os
 import time
 import subprocess
 import shutil
-from pymatgen.core import Structure
+from pymatgen.core import Element, Structure
 from pymatgen.io.vasp import VaspInput, Vasprun, Kpoints, Poscar, Chgcar, Potcar, Outcar
 from pymatgen.electronic_structure.bandstructure import BandStructure, BandStructureSymmLine
 import math
@@ -112,11 +112,22 @@ def vasp_relaxation(calculation_id: str, work_dir: str, struct: Structure,
     calc_dir = os.path.abspath(f'{work_dir}/{Name}')
     
     # 创建VASP输入文件
+    # 手动获取元素列表，确保顺序与POSCAR一致
+    poscar = Poscar(struct)
+    unique_species = []
+    for species in poscar.structure.species:
+        species: Element
+        if unique_species:
+            if species.symbol != unique_species[-1]:
+                unique_species.append(species.symbol)
+        else:
+            unique_species.append(species.symbol)
+    
     vasp_input = VaspInput(
-        poscar=Poscar(struct),
+        poscar=poscar,
         incar=incar_dict,
         kpoints=kpoints,
-        potcar=Potcar(struct.symbol_set)
+        potcar=Potcar(unique_species)
     )
     
     # 准备结构优化目录
@@ -151,13 +162,23 @@ def vasp_scf(calculation_id: str, work_dir: str, struct: Structure,
     calc_dir = os.path.abspath(f'{work_dir}/{Name}')
     
     # 创建VASP输入文件
+    # 手动获取元素列表，确保顺序与POSCAR一致
+    poscar = Poscar(struct)
+    unique_species = []
+    for species in poscar.structure.species:
+        if unique_species:
+            if species.symbol != unique_species[-1]:
+                unique_species.append(species.symbol)
+        else:
+            unique_species.append(species.symbol)
+    
     vasp_input = VaspInput(
-        poscar=Poscar(struct),
+        poscar=poscar,
         incar=incar_dict,
         kpoints=kpoints,
-        potcar=Potcar(struct.symbol_set)
+        potcar=Potcar(unique_species)
     )
-    
+
     # 准备自洽场计算目录
     scf_dir = os.path.join(calc_dir, "scf/")
     os.makedirs(scf_dir, exist_ok=True)
@@ -196,11 +217,21 @@ def vasp_nscf(calculation_id: str, work_dir: str, struct: Structure,
     calc_dir = os.path.abspath(f'{work_dir}/{Name}')
     
     # 创建VASP输入文件
+    # 手动获取元素列表，确保顺序与POSCAR一致
+    poscar = Poscar(struct)
+    unique_species = []
+    for species in poscar.structure.species:
+        if unique_species:
+            if species.symbol != unique_species[-1]:
+                unique_species.append(species.symbol)
+        else:
+            unique_species.append(species.symbol)
+    
     vasp_input = VaspInput(
-        poscar=Poscar(struct),
+        poscar=poscar,
         incar=incar_dict,
         kpoints=kpoints,
-        potcar=Potcar(struct.symbol_set)
+        potcar=Potcar(unique_species)
     )
     
     # 准备能带计算目录
@@ -256,9 +287,31 @@ def check_status(calc_dict: dict[str, dict[str, Any]]) -> Dict[str, Any]:
                         job_status = "completed"
                         # 读取计算结果
                         job_result = _read_calculation_result(calc_type, calculate_path)
-                    else:
+                    elif 'FAILED' in state:
+                        err_str = """ -----------------------------------------------------------------------------
+|                                                                             |
+|     EEEEEEE  RRRRRR   RRRRRR   OOOOOOO  RRRRRR      ###     ###     ###     |
+|     E        R     R  R     R  O     O  R     R     ###     ###     ###     |
+|     E        R     R  R     R  O     O  R     R     ###     ###     ###     |
+|     EEEEE    RRRRRR   RRRRRR   O     O  RRRRRR       #       #       #      |
+|     E        R   R    R   R    O     O  R   R                               |
+|     E        R    R   R    R   O     O  R    R      ###     ###     ###     |
+|     EEEEEEE  R     R  R     R  OOOOOOO  R     R     ###     ###     ###     |"""
+                        try:
+                            if os.path.exists(os.path.join(calculate_path, "log")):
+                                with open(os.path.join(calculate_path, "log"), "r") as f:
+                                    log_content = f.read().split(err_str)[1]
+
+                            else:
+                                with open(os.path.join(calculate_path, "OUTCAR"), "r") as f:
+                                    log_content = f.read().split(err_str)[1]
+                        except:
+                            log_content = f" SLURM job failed without any error message"
                         job_status = "failed"
-                        job_result = {"error": f"SLURM job failed with state: {state}"}
+                        job_result = {"error": f"{log_content}"}
+                    else:
+                        job_status = state.lower()
+                        job_result = {"error": f"SLURM job exited with state: {state}"}
                 else:
                     job_status = "unknown"
                     job_result = {"error": "Cannot determine job status"}

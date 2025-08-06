@@ -32,7 +32,7 @@ from crewai import Task
 class FlaskCrewServer(CrewServer):
     """基于Flask的CrewServer实现"""
     
-    def __init__(self, crew_config: Dict[str, Any], title: str = "Flask Crew AI Server", 
+    def __init__(self, crew_config: Dict[str, Any], title: str = "VASPilot Server", 
                  work_dir: str = ".", db_path: Optional[str] = None, allow_path: Optional[str] = None):
         super().__init__()
         self.title = title

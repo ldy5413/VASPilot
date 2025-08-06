@@ -41,7 +41,7 @@ def start_crew():
     # 创建并启动服务器
     server = FlaskCrewServer(
         crew_config=crew_config,
-        title="Flask Crew AI Server",
+        title="VASPilot Web Server",
         work_dir=work_dir,
         db_path=f"{work_dir}/crew_tasks.db",
         allow_path=args.allow_path

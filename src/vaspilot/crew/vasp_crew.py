@@ -1,6 +1,7 @@
 from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
 from crewai.utilities import I18N
+import os
 from crewai.memory import LongTermMemory, ShortTermMemory, EntityMemory
 from crewai.memory.storage.ltm_sqlite_storage import LTMSQLiteStorage
 from crewai.memory.storage.rag_storage import RAGStorage
@@ -88,7 +89,8 @@ class VaspCrew():
 		"""Creates the ChatMaterials crew"""
 		# To learn how to add knowledge sources to your crew, check out the documentation:
 		# https://docs.crewai.com/concepts/knowledge#what-is-knowledge
-
+		if not os.path.exists("./memory/"):
+			os.makedirs("./memory/")
 		return Crew(
 			agents=self.agents, # Automatically created by the @agent decorator
 			tasks=self.tasks, # Automatically created by the @task decorator
@@ -100,11 +102,11 @@ class VaspCrew():
 			#planning_llm=self.llm_config["planning"],
 			manager_agent=self.create_manager_agent(),
 			memory=True,
-			# long_term_memory = LongTermMemory(
-        	# 	storage=LTMSQLiteStorage(
-            # 		db_path="./memory/ltm_storage.db",
-        	# 	)
-    		# ),
+			long_term_memory = LongTermMemory(
+        		storage=LTMSQLiteStorage(
+            		db_path="./memory/ltm_storage.db",
+        		)
+    		),
 			short_term_memory = ShortTermMemory(
 				storage = RAGStorage(
 					type="short_term",
