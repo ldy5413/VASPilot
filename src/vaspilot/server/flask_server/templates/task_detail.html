@@ -1480,7 +1480,8 @@
     // 获取最新数据
     async function fetchLatestData(forceUpdate = false, skipHistoryUpdate = false) {
         try {
-            const taskId = window.location.pathname.split('/')[2];
+            const paths = window.location.pathname.split('/')
+            const taskId = paths[paths.length - 1];
             const response = await fetch('/api/task/' + taskId + '/logs?timestamp=' + Date.now());
             
             if (response.ok) {
