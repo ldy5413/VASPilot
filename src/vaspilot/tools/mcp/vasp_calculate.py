@@ -393,3 +393,13 @@ def _read_calculation_result(calc_type: str, calculate_path: str) -> Dict[str, A
             "success": False,
             "error": str(e)
         }
+
+def cancel_slurm_job(slurm_id: str) -> Dict[str, Any]:
+    """
+    取消SLURM任务
+    """
+    try:
+        subprocess.run(['scancel', slurm_id], capture_output=True, text=True)
+        return {"success": True, "message": f"SLURM job {slurm_id} cancelled"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}

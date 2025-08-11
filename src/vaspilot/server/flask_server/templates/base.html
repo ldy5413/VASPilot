@@ -64,11 +64,13 @@
                                     {% if task.status == 'completed' %}bg-success
                                     {% elif task.status == 'running' %}bg-primary
                                     {% elif task.status == 'failed' %}bg-danger
+                                    {% elif task.status == 'cancelled' %}bg-warning
                                     {% else %}bg-secondary
                                     {% endif %}">
-                                    {% if task.status == 'completed' %}Finished
+                                    {% if task.status == 'completed' %}Completed
                                     {% elif task.status == 'running' %}Running
                                     {% elif task.status == 'failed' %}Failed
+                                    {% elif task.status == 'cancelled' %}Cancelled
                                     {% else %}Waiting
                                     {% endif %}
                                 </span>
@@ -219,6 +221,7 @@
                     if (task.status === 'completed') expectedStatus = 'Completed';
                     else if (task.status === 'running') expectedStatus = 'Running';
                     else if (task.status === 'failed') expectedStatus = 'Failed';
+                    else if (task.status === 'cancelled') expectedStatus = 'Cancelled';
                     else expectedStatus = 'Waiting';
                     
                     if (currentStatus !== expectedStatus || currentCard.dataset.taskId !== task.conversation_id) {
@@ -259,8 +262,10 @@
                 } else if (task.status === 'failed') {
                     statusClass = 'bg-danger';
                     statusText = 'Failed';
+                } else if (task.status === 'cancelled') {
+                    statusClass = 'bg-warning';
+                    statusText = 'Cancelled';
                 }
-                
                 const taskDescription = task.task_description.length > 50 
                     ? task.task_description.substring(0, 50) + '...' 
                     : task.task_description;

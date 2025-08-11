@@ -8,8 +8,10 @@ from pymatgen.core import Structure
 from pymatgen.io.vasp import Kpoints
 from ase.dft.kpoints import BandPath
 import yaml
+import math
+import numpy as np
 import pickle
-from .vasp_calculate import vasp_relaxation, vasp_scf, vasp_nscf, check_status
+from .vasp_calculate import vasp_relaxation, vasp_scf, vasp_nscf, check_status, cancel_slurm_job
 from .struct_tools import search_materials_project, analyze_crystal_structure, create_supercell, rotate_structure, symmetrize_structure
 from pydantic import BaseModel, Field
 from .sqlite_database import VaspCalculationDB
@@ -108,7 +110,9 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
         calculation_id = str(uuid.uuid4())
         struct = Structure.from_file(structure_path)
         if kpoint_num is None:
-            kpoint_num = (max(int(40/struct.lattice.a), 1), max(int(40/struct.lattice.b), 1), max(int(40/struct.lattice.c), 1))
+            factor = 40 * np.power(struct.lattice.a * struct.lattice.b * struct.lattice.c / struct.lattice.volume , 1/3)
+            kpoint_float = (factor/struct.lattice.a, factor/struct.lattice.b, factor/struct.lattice.c)
+            kpoint_num = (max(math.ceil(kpoint_float[0]), 1), max(math.ceil(kpoint_float[1]), 1), max(math.ceil(kpoint_float[2]), 1))
         kpts = Kpoints.gamma_automatic(kpts = kpoint_num)
         incar = {}
         incar.update(settings['VASP_default_INCAR']['relaxation'])
@@ -181,7 +185,9 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
             chgcar_path = None
             wavecar_path = None
         if kpoint_num is None:
-            kpoint_num = (max(int(40/struct.lattice.a), 1), max(int(40/struct.lattice.b), 1), max(int(40/struct.lattice.c), 1))
+            factor = 40 * np.power(struct.lattice.a * struct.lattice.b * struct.lattice.c / struct.lattice.volume , 1/3)
+            kpoint_float = (factor/struct.lattice.a, factor/struct.lattice.b, factor/struct.lattice.c)
+            kpoint_num = (max(math.ceil(kpoint_float[0]), 1), max(math.ceil(kpoint_float[1]), 1), max(math.ceil(kpoint_float[2]), 1))
         kpts = Kpoints.gamma_automatic(kpts = kpoint_num)
         incar = {}
         if soc:
@@ -223,7 +229,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
     @mcp.tool(name="vasp_nscf")
     async def vasp_nscf_tool(restart_id: str, soc: bool=True, incar_tags: Optional[Dict] = None, kpath: Optional[str] = None, n_kpoints: Optional[int] = None, ) -> Dict[str, Any]:
         """
-        提交VASP非自洽场（NSCF）计算任务，用于计算能带结构
+        提交VASP非自洽场（NSCF）计算任务，用于计算能带结构。提供的INCAR参数应当尽可能与前序SCF计算一致。
         
         Args:
             restart_id: 前序SCF计算的ID（必需），用于获取收敛的电荷密度和波函数
@@ -260,7 +266,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
         if kpath_obj.kpath is None:
             return {"success": False, "error": "Failed to generate k-path for the structure"}
 
-        n_kpoints = 40 if n_kpoints is None else n_kpoints
+        n_kpoints = 16 if n_kpoints is None else n_kpoints
         if kpath is None:
             # 使用pymatgen自动生成的高对称路径
             kpts = Kpoints.automatic_linemode(n_kpoints, kpath_obj)
@@ -414,7 +420,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
                         * 'stress': 应力张量(float)
                         * 'eigen_values': 本征值(numpy.ndarray)
                     
-                    示例代码1，绘制能带：
+                    示例代码1，绘制能带(无特殊画图需求时参考本示例)：
                     ```python
                     # 获取第一个计算数据
                     band_calc_id = list(data.keys())[0]
@@ -429,17 +435,41 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
                         from pymatgen.electronic_structure.plotter import BSPlotter
                         plotter = BSPlotter(bs)
                         plotter.get_plot(ylim=[-2, 2])
-                        
-                        # 或者手动绘制
-                        for spin in bs.bands:
-                            for band in bs.bands[spin]:
-                                plt.plot(range(len(band)), band - bs.efermi, 'b-', alpha=0.7)
                         plt.axhline(y=0, color='r', linestyle='--', label='费米能级')
                         plt.ylabel('能量 - E_fermi (eV)')
                         plt.xlabel('k点')
                         plt.legend()
                     ```
-                    示例代码2, 绘制态密度：
+                    示例代码2，绘制能带(有特殊画图需求时应当参考本示例)：
+                    ```python
+                    # 获取第一个计算数据
+                    band_calc_id = list(data.keys())[0]
+                    calc_data = data[band_calc_id]
+                    
+                    # 绘制能带结构图
+                    if 'band_structure' in calc_data:
+                        bs = calc_data['band_structure']  # 这是BandStructure对象
+                        # 使用pymatgen读取画图数据
+                        from pymatgen.electronic_structure.plotter import BSPlotter
+                        plotter = BSPlotter(bs)
+                        ax = plt.gca()
+                        data = plotter.bs_plot_data(bs)
+                        # 绘制能带结构图
+                        for spin in bs.bands:
+                            ls = "-" if str(spin) == "1" else "--"
+                            for dist, ene in zip(data["distances"], data["energy"][str(spin)], strict=True):
+                                ax.plot(dist, ene.T, ls=ls, c="blue")
+
+                        ax.set_xticks(data["ticks"]["distance"], data["ticks"]["label"])
+                        for distance in data["ticks"]["distance"]:
+                            ax.axvline(x=distance, color='black', linewidth=0.5)
+                        plt.axhline(y=0, color='r', linestyle='--', label='费米能级')
+                        plt.xlim(np.min(data["distances"]), np.max(data["distances"]))
+                        plt.ylim(-5, 5)
+                        plt.ylabel('Energy - E_fermi (eV)')
+                        plt.xlabel('k points')
+                    ```
+                    示例代码3, 绘制态密度：
                     ```python
                     # 获取态密度计算数据
                     dos_calc_id = list(data.keys())[0]
@@ -657,16 +687,19 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
     async def read_calc_results_from_db(calc_ids: list[str]) -> Dict[str, Any]:
         """
         读取计算记录
-        
         Args:
-            file_paths: 要检查的文件路径列表
+            calculation_ids: 要读取的计算ID列表
         
         Returns:
-            exist_dict: 包含每个文件是否存在的字典，格式为：
+            包含每个计算任务状态和结果的字典，格式为：
             {
-                "file_path1": True,
-                "file_path2": True,
-                ......
+                calculation_id: {
+                    "slurm_id": "12345",
+                    "calc_type": "relaxation",
+                    "calculate_path": "/path/to/calculation",
+                    "status": "running/completed/failed/error",
+                    ... 其他结果数据
+                }
             }
         """
         llm_friendly_results = {}
@@ -677,6 +710,34 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
             else:
                 llm_friendly_results[calc_id] = {"error": "calc_id not found!"}
         return llm_friendly_results
+
+    @mcp.tool(name="cancel_slurm_job")
+    async def cancel_slurm_job_tool(calc_ids: list[str]) -> Dict[str, Any]:
+        """
+        取消SLURM任务
+        
+        Args:
+            calc_ids: 要取消的计算id列表
+        
+        Returns:
+            取消操作的结果
+        """
+        result_dict = {}
+        for calc_id in calc_ids:
+            try:
+                data = read_record(calc_id)
+                if data is not None:
+                    if data.get("status") == "running":
+                        result = cancel_slurm_job(data.get("slurm_id"))
+                        data["status"] = "cancelled"
+                        write_record(calc_id, data)
+                        result_dict[calc_id] = result
+                    else:
+                        result_dict[calc_id] = {"success": True, "message": f"SLURM job {data.get('slurm_id')} is not running"}
+            except Exception as e:
+                result_dict[calc_id] = {"success": False, "error": str(e)}
+            
+        return result_dict
 
     mcp.run(transport="streamable-http")
 

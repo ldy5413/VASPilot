@@ -194,6 +194,18 @@
             border-radius: 12px;
             font-weight: 500;
         }
+        
+        /* 通知弹窗样式 */
+        .notification-popup {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: none;
+            border-radius: 8px;
+        }
+        
+        .notification-popup .btn-close {
+            padding: 0.25rem;
+            font-size: 0.75rem;
+        }
     </style>
   </head>
 <body>
@@ -228,11 +240,13 @@
                                         {% if recent_task.status == 'completed' %}bg-success
                                         {% elif recent_task.status == 'running' %}bg-primary
                                         {% elif recent_task.status == 'failed' %}bg-danger
+                                        {% elif recent_task.status == 'cancelled' %}bg-warning
                                         {% else %}bg-secondary
                                         {% endif %}">
                                         {% if recent_task.status == 'completed' %}Completed
                                         {% elif recent_task.status == 'running' %}Running
                                         {% elif recent_task.status == 'failed' %}Failed
+                                        {% elif recent_task.status == 'cancelled' %}Cancelled
                                         {% else %}Waiting
                                         {% endif %}
                                     </span>
@@ -251,18 +265,28 @@
                     <div class="card-header">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Task details</h5>
-                            <span class="badge main-task-status-badge
-                                {% if task.status == 'completed' %}bg-success
-                                {% elif task.status == 'running' %}bg-primary
-                                {% elif task.status == 'failed' %}bg-danger
-                                {% else %}bg-secondary
-                                {% endif %}">
-                                {% if task.status == 'completed' %}已完成
-                                {% elif task.status == 'running' %}执行中
-                                {% elif task.status == 'failed' %}失败
-                                {% else %}等待中
+                            <div class="d-flex align-items-center">
+                                <span class="badge main-task-status-badge
+                                    {% if task.status == 'completed' %}bg-success
+                                    {% elif task.status == 'running' %}bg-primary
+                                    {% elif task.status == 'failed' %}bg-danger
+                                    {% elif task.status == 'cancelled' %}bg-warning text-dark
+                                    {% else %}bg-secondary
+                                    {% endif %}">
+                                    {% if task.status == 'completed' %}Completed
+                                    {% elif task.status == 'running' %}Running
+                                    {% elif task.status == 'failed' %}Failed
+                                    {% elif task.status == 'cancelled' %}Cancelled
+                                    {% else %}等待中
+                                    {% endif %}
+                                </span>
+                                <!-- 停止任务按钮 -->
+                                {% if task.status in ['running', 'pending'] %}
+                                <button class="btn btn-danger btn-sm ms-2" id="stop-task-btn" onclick="stopTask()">
+                                    <i class="fas fa-stop"></i> 停止任务
+                                </button>
                                 {% endif %}
-                            </span>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -869,6 +893,7 @@
         if (mainTaskBadge.textContent.trim() === 'Completed') currentStatus = 'completed';
         else if (mainTaskBadge.textContent.trim() === 'Running') currentStatus = 'running';
         else if (mainTaskBadge.textContent.trim() === 'Failed') currentStatus = 'failed';
+        else if (mainTaskBadge.textContent.trim() === 'Cancelled') currentStatus = 'cancelled';
         else currentStatus = 'pending';
         
         // 只有当状态真的发生变化时才更新
@@ -884,11 +909,137 @@
             } else if (status === 'failed') {
                 mainTaskBadge.className += ' bg-danger';
                 mainTaskBadge.textContent = 'Failed';
+            } else if (status === 'cancelled') {
+                mainTaskBadge.className += ' bg-warning text-dark';
+                mainTaskBadge.textContent = 'Cancelled';
             } else {
                 mainTaskBadge.className += ' bg-secondary';
                 mainTaskBadge.textContent = 'Waiting';
             }
+            
+            // 根据任务状态显示或隐藏停止按钮
+            updateStopButton(status);
         }
+    }
+    
+    // 更新停止按钮显示状态
+    function updateStopButton(status) {
+        const stopBtn = document.getElementById('stop-task-btn');
+        if (stopBtn) {
+            if (status === 'running' || status === 'pending') {
+                stopBtn.style.display = 'inline-block';
+            } else {
+                stopBtn.style.display = 'none';
+            }
+        }
+    }
+    
+    // 停止任务函数
+    async function stopTask() {
+        const stopBtn = document.getElementById('stop-task-btn');
+        if (!stopBtn) return;
+        
+        // 确认对话框
+        if (!confirm('确定要停止当前任务吗？\n\n停止任务后将无法恢复，正在进行的计算也会被取消。')) {
+            return;
+        }
+        
+        try {
+            // 禁用按钮并显示加载状态
+            stopBtn.disabled = true;
+            const originalContent = stopBtn.innerHTML;
+            stopBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 停止中...';
+            
+            const taskId = getCurrentTaskId();
+            const response = await fetch('/api/task/' + taskId + '/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                // 停止成功
+                console.log('任务停止成功:', result);
+                
+                // 显示成功消息
+                showNotification('任务已停止', 'success');
+                
+                // 更新任务状态
+                updateTaskStatus('cancelled');
+                
+                // 停止自动刷新
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+                
+                // 获取最新数据以更新界面
+                setTimeout(() => {
+                    fetchLatestData(true);
+                }, 1000);
+                
+            } else {
+                // 停止失败
+                console.error('停止任务失败:', result);
+                showNotification(result.error || '停止任务失败', 'error');
+                
+                // 恢复按钮状态
+                stopBtn.disabled = false;
+                stopBtn.innerHTML = originalContent;
+            }
+            
+        } catch (error) {
+            console.error('停止任务时发生错误:', error);
+            showNotification('停止任务时发生错误: ' + error.message, 'error');
+            
+            // 恢复按钮状态
+            stopBtn.disabled = false;
+            stopBtn.innerHTML = originalContent;
+        }
+    }
+    
+    // 显示通知消息
+    function showNotification(message, type = 'info') {
+        // 创建通知元素
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} notification-popup`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        
+        notification.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+                <span>${message}</span>
+                <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // 显示动画
+        setTimeout(() => {
+            notification.style.opacity = '1';
+        }, 100);
+        
+        // 自动隐藏
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 5000);
     }
     
     // 提取工具名称的辅助函数
@@ -2062,6 +2213,11 @@
             }
         }
         
+        // 初始化停止按钮状态
+        if (initialData && initialData.task) {
+            updateStopButton(initialData.task.status);
+        }
+        
         console.log('🎉 Task detail page initialized!');
     });
     
@@ -2079,6 +2235,7 @@
     window.showVaspFile = showVaspFile;
     window.closeFileDisplay = closeFileDisplay;
     window.downloadFile = downloadFile;
+    window.stopTask = stopTask;
     </script>
 </body>
 </html> 

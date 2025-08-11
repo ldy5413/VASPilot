@@ -19,16 +19,18 @@ def start_crew():
     
     args = parser.parse_args()
     
+    if not args.config:
+        print(f"❌ 请用--config设置配置文件路径")
+
     # 处理路径
     config_path = Path(args.config)
     if not config_path.is_absolute():
-        config_path = project_root / args.config
+        config_path = os.path.abspath(config_path)
     
     work_dir = Path(args.work_dir)
     if not work_dir.is_absolute():
-        work_dir = current_dir / args.work_dir
-    work_dir.mkdir(parents=True, exist_ok=True)
-    work_dir = str(work_dir.absolute())
+        work_dir = os.path.abspath(work_dir)
+    os.makedirs(work_dir, exist_ok=True)
     
     # 加载配置
     if not config_path.exists():

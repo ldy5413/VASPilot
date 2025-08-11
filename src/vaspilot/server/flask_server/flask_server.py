@@ -12,7 +12,10 @@ import uuid
 import sqlite3
 import threading
 import argparse
+import re
+import signal
 from datetime import datetime
+import asyncio
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -27,6 +30,7 @@ current_dir = Path(__file__).parent  # flask_server/
 from ...listener.server_listener import CrewServer, ServerListener
 from ...crew import VaspCrew
 from crewai import Task
+from fastmcp.client import Client
 
 
 class FlaskCrewServer(CrewServer):
@@ -41,6 +45,7 @@ class FlaskCrewServer(CrewServer):
         self.running_tasks = {}
         self._current_conversation_id: Optional[str] = None
         self.allow_path = allow_path
+        self._stop_flags = {}  # 用于标记需要停止的任务
         
         # 数据库路径
         if db_path is None:
@@ -457,6 +462,140 @@ class FlaskCrewServer(CrewServer):
             except Exception as e:
                 return jsonify({'error': f'列出文件失败: {str(e)}'}), 500
 
+        @self.app.route('/api/task/<conversation_id>/stop', methods=['POST'])
+        def stop_task(conversation_id):
+            """停止任务API"""
+            try:
+                # 检查任务是否存在
+                task = self._get_task_by_id(conversation_id)
+                if not task:
+                    return jsonify({'error': '任务未找到'}), 404
+                
+                # 检查任务状态
+                if task['status'] not in ['running', 'pending']:
+                    return jsonify({'error': f'任务状态为 {task["status"]}，无法停止'}), 400
+                
+                self.system_log(f"开始停止任务: {conversation_id}")
+                
+                # 1. 停止crew进程
+                crew_stopped = self._stop_crew_process(conversation_id)
+                
+                # 2. 从日志中提取计算任务ID
+                calc_ids = self._extract_calc_ids_from_logs(conversation_id)
+                self.system_log(f"提取到计算ID: {calc_ids}")
+                
+                # 3. 取消相关的SLURM任务
+                cancel_results = {}
+                if calc_ids:
+                    try:
+                        cancel_results = asyncio.run(self._cancel_slurm_job(calc_ids))
+                        self.system_log(f"SLURM任务取消结果: {cancel_results}")
+                    except Exception as e:
+                        self.system_log(f"取消SLURM任务时出错: {str(e)}")
+                        cancel_results = {"error": str(e)}
+                
+                # 4. 更新数据库状态
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute(
+                        'UPDATE task_executions SET status = ?, completed_at = CURRENT_TIMESTAMP, error_message = ? WHERE conversation_id = ?',
+                        ('cancelled', '任务被用户手动停止', conversation_id)
+                    )
+                    conn.commit()
+                
+                # 5. 清理运行中的任务记录
+                if conversation_id in self.running_tasks:
+                    del self.running_tasks[conversation_id]
+                
+                self.system_log(f"任务 {conversation_id} 已停止")
+                
+                return jsonify({
+                    'success': True,
+                    'message': '任务已停止',
+                    'details': {
+                        'crew_stopped': crew_stopped,
+                        'calc_ids_found': len(calc_ids),
+                        'calc_ids': calc_ids,
+                        'slurm_cancel_results': cancel_results
+                    }
+                })
+                
+            except Exception as e:
+                error_msg = f'停止任务时出错: {str(e)}'
+                self.system_log(error_msg)
+                return jsonify({'error': error_msg}), 500
+
+    def _extract_calc_ids_from_logs(self, conversation_id):
+        """从任务日志中提取计算任务ID"""
+        calc_ids = []
+        try:
+            logs = self._get_task_logs(conversation_id)
+            
+            for log in logs:
+                content = log['content']
+                
+                # 从tool_output中查找calculation_id
+                if log['type'] == 'tool_output':
+                    try:
+                        # 尝试解析JSON内容
+                        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                        if json_match:
+                            tool_data = json.loads(json_match.group())
+                            if isinstance(tool_data, dict):
+                                # 查找calculation_id字段
+                                if 'calculation_id' in tool_data:
+                                    calc_ids.append(tool_data['calculation_id'])
+                                # 也检查嵌套结构中的calculation_id
+                                elif isinstance(tool_data, dict):
+                                    for key, value in tool_data.items():
+                                        if isinstance(value, dict) and 'calculation_id' in value:
+                                            calc_ids.append(value['calculation_id'])
+                    except (json.JSONDecodeError, AttributeError):
+                        # 如果JSON解析失败，使用正则表达式查找
+                        calc_id_patterns = [
+                            r'"calculation_id":\s*"([^"]+)"',
+                            r"'calculation_id':\s*'([^']+)'",
+                            r'calculation_id.*?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'
+                        ]
+                        for pattern in calc_id_patterns:
+                            matches = re.findall(pattern, content, re.IGNORECASE)
+                            calc_ids.extend(matches)
+                
+                # 从其他日志类型中查找UUID格式的计算ID
+                uuid_pattern = r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'
+                uuid_matches = re.findall(uuid_pattern, content, re.IGNORECASE)
+                
+                # 过滤掉对话ID本身，只保留计算ID
+                for match in uuid_matches:
+                    if match != conversation_id and match not in calc_ids:
+                        calc_ids.append(match)
+            
+            # 去重并返回
+            return list(set(calc_ids))
+            
+        except Exception as e:
+            self.system_log(f"提取计算ID时出错: {str(e)}")
+            return []
+
+    def _stop_crew_process(self, conversation_id):
+        """停止crew进程"""
+        try:
+            if conversation_id in self.running_tasks:
+                thread = self.running_tasks[conversation_id]
+                if thread.is_alive():
+                    # 由于Python线程无法直接强制停止，我们通过设置状态来标记停止
+                    # 实际的停止需要在crew执行过程中检查这个状态
+                    self.system_log(f"标记任务 {conversation_id} 为停止状态")
+                    return True
+                else:
+                    self.system_log(f"任务 {conversation_id} 已经停止")
+                    return True
+            else:
+                self.system_log(f"未找到运行中的任务 {conversation_id}")
+                return False
+        except Exception as e:
+            self.system_log(f"停止crew进程时出错: {str(e)}")
+            return False
+
     def _execute_crew_task(self, conversation_id, task_description):
         """执行crew任务"""
         try:
@@ -573,6 +712,15 @@ class FlaskCrewServer(CrewServer):
                 (conversation_id, log_type, role_name, content)
             )
             conn.commit()
+
+    async def _cancel_slurm_job(self, calc_ids: list[str]):
+        async with Client(self.config["mcp_server"]["url"]) as client:
+            # call tool
+            tool_result = await client.call_tool("cancel_slurm_job", {"calc_ids": calc_ids})
+        if tool_result.data is None:
+            return {"error": "No result from check_calculation_status"}
+        else:
+            return tool_result.data
 
     def launch(self, host="127.0.0.1", port=5000, debug=False, **kwargs):
         """启动Flask应用"""
