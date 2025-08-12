@@ -616,7 +616,7 @@ class FlaskCrewServer(CrewServer):
             os.chdir(local_dir)
             
             self.system_log("初始化crew...")
-            crew = self.generator.crew()
+            crew = self.generator.crew(local_dir)
             self.system_log("设置监听器...")
             self.current_logger.crew_fingerprint = crew.fingerprint.uuid_str
             self.system_log("创建用户任务...")

@@ -85,18 +85,18 @@ class VaspCrew():
 		return manager
 
 	@crew
-	def crew(self) -> Crew:
+	def crew(self, work_dir: str) -> Crew:
 		"""Creates the ChatMaterials crew"""
 		# To learn how to add knowledge sources to your crew, check out the documentation:
 		# https://docs.crewai.com/concepts/knowledge#what-is-knowledge
-		if not os.path.exists("./memory/"):
-			os.makedirs("./memory/")
+		if not os.path.exists(f"{work_dir}/memory/"):
+			os.makedirs(f"{work_dir}/memory/")
 		return Crew(
 			agents=self.agents, # Automatically created by the @agent decorator
 			tasks=self.tasks, # Automatically created by the @task decorator
 			process=Process.hierarchical,
 			verbose=True,
-			output_log_file="./output.log",
+			output_log_file=f"{work_dir}/output.log",
 			function_calling_llm=self.llm_config["fn_call_llm"],
 			#planning=True,
 			#planning_llm=self.llm_config["planning"],
@@ -104,13 +104,13 @@ class VaspCrew():
 			memory=True,
 			long_term_memory = LongTermMemory(
         		storage=LTMSQLiteStorage(
-            		db_path="./memory/ltm_storage.db",
+            		db_path=f"{work_dir}/memory/ltm_storage.db",
         		)
     		),
 			short_term_memory = ShortTermMemory(
 				storage = RAGStorage(
 					type="short_term",
-					path="./memory/stm",
+					path=f"{work_dir}/memory/stm",
 					embedder_config={
 						"provider": "custom",
 						"config": {
@@ -122,7 +122,7 @@ class VaspCrew():
 			entity_memory = EntityMemory(
 				storage=RAGStorage(
 					type="short_term",
-					path="./memory/etm",
+					path=f"{work_dir}/memory/etm",
 					embedder_config={
 						"provider": "custom",
 						"config": {
