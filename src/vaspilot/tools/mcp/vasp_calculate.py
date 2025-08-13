@@ -110,6 +110,8 @@ def vasp_relaxation(calculation_id: str, work_dir: str, struct: Structure,
     """
     Name = calculation_id
     calc_dir = os.path.abspath(f'{work_dir}/{Name}')
+    if potcar_map is None:
+        potcar_map = {}
     # 创建VASP输入文件
     # 手动获取元素列表，确保顺序与POSCAR一致
     poscar = Poscar(struct)
@@ -232,7 +234,8 @@ def vasp_nscf(calculation_id: str, work_dir: str, struct: Structure,
     """
     Name = calculation_id
     calc_dir = os.path.abspath(f'{work_dir}/{Name}')
-    
+    if potcar_map is None:
+        potcar_map = {}
     # 创建VASP输入文件
     # 手动获取元素列表，确保顺序与POSCAR一致
     poscar = Poscar(struct)

@@ -310,20 +310,19 @@ def make_supercell(
     
     try:
         # 处理输入参数
-        if isinstance(struct_path, str):
-            if os.path.exists(struct_path):
-                struct = Structure.from_file(struct_path)
-            else:
-                return {
-                    "success": False,
-                    "error": f"文件不存在: {struct_path}",
-                    "supercell_structure": None
-                }
+        if os.path.exists(struct_path):
+            fmt = None
+            if struct_path.split(".")[-1] in ["poscar", "vasp"]:
+                fmt = "poscar"
+            elif struct_path.split(".")[-1] in ["cif"]:
+                fmt = "cif"
+            with open(struct_path, "r") as f:
+                struct = Structure.from_str(f.read(), fmt=fmt)
         else:
             return {
                 "success": False,
-                "error": "不支持的输入类型",
-                "supercell_structure": None
+                "error": f"文件不存在: {struct_path}",
+                "rotated_structure": None
             }
         
         # 使用pymatgen创建超胞
@@ -375,19 +374,18 @@ def rotate_structure(
     
     try:
         # 处理输入参数
-        if isinstance(struct_path, str):
-            if os.path.exists(struct_path):
-                struct = Structure.from_file(struct_path)
-            else:
-                return {
-                    "success": False,
-                    "error": f"文件不存在: {struct_path}",
-                    "rotated_structure": None
-                }
+        if os.path.exists(struct_path):
+            fmt = None
+            if struct_path.split(".")[-1] in ["poscar", "vasp"]:
+                fmt = "poscar"
+            elif struct_path.split(".")[-1] in ["cif"]:
+                fmt = "cif"
+            with open(struct_path, "r") as f:
+                struct = Structure.from_str(f.read(), fmt=fmt)
         else:
             return {
                 "success": False,
-                "error": "不支持的输入类型",
+                "error": f"文件不存在: {struct_path}",
                 "rotated_structure": None
             }
         
@@ -436,19 +434,18 @@ def symmetrize_structure(
     
     try:
         # 处理输入参数
-        if isinstance(struct_path, str):
-            if os.path.exists(struct_path):
-                struct = Structure.from_file(struct_path)
-            else:
-                return {
-                    "success": False,
-                    "error": f"文件不存在: {struct_path}",
-                    "symmetrized_structure": None
-                }
+        if os.path.exists(struct_path):
+            fmt = None
+            if struct_path.split(".")[-1] in ["poscar", "vasp"]:
+                fmt = "poscar"
+            elif struct_path.split(".")[-1] in ["cif"]:
+                fmt = "cif"
+            with open(struct_path, "r") as f:
+                struct = Structure.from_str(f.read(), fmt=fmt)
         else:
             return {
                 "success": False,
-                "error": "不支持的输入类型",
+                "error": f"文件不存在: {struct_path}",
                 "symmetrized_structure": None
             }
         
@@ -504,15 +501,20 @@ def convert_structure_format(
     
     try:
         # 检查输入文件是否存在
-        if not os.path.exists(input_path):
+        if os.path.exists(input_path):
+            fmt = None
+            if input_path.split(".")[-1] in ["poscar", "vasp"]:
+                fmt = "poscar"
+            elif input_path.split(".")[-1] in ["cif"]:
+                fmt = "cif"
+            with open(input_path, "r") as f:
+                struct = Structure.from_str(f.read(), fmt=fmt)
+        else:
             return {
                 "success": False,
-                "error": f"输入文件不存在: {input_path}",
+                "error": f"文件不存在: {input_path}",
                 "converted_structure": None
             }
-        
-        # 读取结构
-        struct = Structure.from_file(input_path)
         
         # 创建输出目录
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
