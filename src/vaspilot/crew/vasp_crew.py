@@ -16,7 +16,6 @@ from crewai_tools import MCPServerAdapter
 # you can use the @before_kickoff and @after_kickoff decorators
 # https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators
 
-@CrewBase
 class VaspCrew():
 	"""chatmaterials crew"""
 
@@ -39,7 +38,7 @@ class VaspCrew():
 
 	# If you would like to add tools to your agents, you can learn more about it here:
 	# https://docs.crewai.com/concepts/agents#agent-tools
-	@agent
+
 	def crystal_structure_agent(self) -> Agent:
 		return Agent(
 			role="Crystal Structure Agent",
@@ -49,7 +48,7 @@ class VaspCrew():
 			tools = [self.tool_dicts[tool_name] for tool_name in self.config['agents']['crystal_structure_agent']['tools']],
 			function_calling_llm=self.llm_config['fn_call_llm'],
 		)
-	@agent
+
 	def vasp_agent(self) -> Agent:
 		return Agent(
 			role="VASP Agent",
@@ -57,10 +56,10 @@ class VaspCrew():
 			backstory=self.config['agents']['vasp_agent']['backstory'],
 			llm = self.llm_config["vasp_agent"],
 			tools = [self.tool_dicts[tool_name] for tool_name in self.config['agents']['vasp_agent']['tools']],
-			function_calling_llm=self.llm_config['fn_call_llm']
+			function_calling_llm=self.llm_config['fn_call_llm'],
 		)
 
-	@agent
+	
 	def result_validation_agent(self) -> Agent:
 		return Agent(
 			role="Result Validation Agent",
@@ -68,7 +67,7 @@ class VaspCrew():
 			backstory=self.config['agents']['result_validation_agent']['backstory'],
 			llm = self.llm_config["result_validation_agent"],
 			tools = [self.tool_dicts[tool_name] for tool_name in self.config['agents']['result_validation_agent']['tools']],
-			function_calling_llm=self.llm_config['fn_call_llm']
+			function_calling_llm=self.llm_config['fn_call_llm'],
 		)
 
 	def create_manager_agent(self) -> Agent:
@@ -84,7 +83,7 @@ class VaspCrew():
 		)
 		return manager
 
-	@crew
+	
 	def crew(self, work_dir: str) -> Crew:
 		"""Creates the ChatMaterials crew"""
 		# To learn how to add knowledge sources to your crew, check out the documentation:
@@ -92,8 +91,8 @@ class VaspCrew():
 		if not os.path.exists(f"{work_dir}/memory/"):
 			os.makedirs(f"{work_dir}/memory/")
 		return Crew(
-			agents=self.agents, # Automatically created by the @agent decorator
-			tasks=self.tasks, # Automatically created by the @task decorator
+			agents=[self.crystal_structure_agent(), self.vasp_agent(), self.result_validation_agent()],
+			tasks=[],
 			process=Process.hierarchical,
 			verbose=True,
 			output_log_file=f"{work_dir}/output.log",

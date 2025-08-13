@@ -12,7 +12,7 @@ import math
 import numpy as np
 import pickle
 from .vasp_calculate import vasp_relaxation, vasp_scf, vasp_nscf, check_status, cancel_slurm_job
-from .struct_tools import search_materials_project, analyze_crystal_structure, create_supercell, rotate_structure, symmetrize_structure
+from .struct_tools import search_materials_project, analyze_crystal_structure, create_crystal_structure, make_supercell, rotate_structure, symmetrize_structure
 from pydantic import BaseModel, Field
 from .sqlite_database import VaspCalculationDB
 def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
@@ -29,7 +29,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
     db_path = settings['db_path']
     attachment_path = settings['attachment_path']
     mp_api_key = settings['mp_api_key']
-    mp_download_path = settings['mp_download_path']
+    structure_path = settings['structure_path']
 
     # 初始化SQLite数据库
     db = VaspCalculationDB(db_path=db_path)
@@ -87,7 +87,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
                 })
         return llm_friendly_result
     @mcp.tool(name="vasp_relaxation")
-    async def vasp_relaxation_tool(structure_path: str, incar_tags: Optional[Dict] = None, kpoint_num: Optional[tuple[int, int, int]] = None, ) -> Dict[str, Any]:
+    async def vasp_relaxation_tool(structure_path: str, incar_tags: Optional[Dict] = None, kpoint_num: Optional[tuple[int, int, int]] = None, potcar_map: Optional[Dict] = None) -> Dict[str, Any]:
         """
         提交VASP结构优化计算任务
         
@@ -95,7 +95,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
             structure_path: 结构文件路径（支持CIF、POSCAR等格式）
             incar_tags: 额外的INCAR参数字典，会与默认设置合并。除非用户指定，不要擅自修改。
             kpoint_num: K点网格设置，格式为(nx, ny, nz)的元组，如果不提供则使用自动密度40
-        
+            potcar_map: POTCAR标签设置，格式为{element: potcar}的字典。例如{"Bi": "Bi_d", "Se": "Se"}。除非用户指定，不要擅自修改。
         Returns:
             包含任务提交结果的字典，包含以下键：
             - calculation_id: 计算任务唯一标识符
@@ -126,7 +126,8 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
             struct=struct,
             kpoints=kpts,
             incar_dict=incar,
-            attachment_path=attachment_path
+            attachment_path=attachment_path,
+            potcar_map=potcar_map
         )
         
         # 保存记录
@@ -144,7 +145,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
         return llm_friendly_result
 
     @mcp.tool(name="vasp_scf")
-    async def vasp_scf_tool(restart_id: Optional[str] = None, structure_path: Optional[str] = None, soc: bool=True, incar_tags: Optional[Dict] = None, kpoint_num: Optional[tuple[int, int, int]] = None, ) -> Dict[str, Any]:
+    async def vasp_scf_tool(restart_id: Optional[str] = None, structure_path: Optional[str] = None, soc: bool=True, incar_tags: Optional[Dict] = None, kpoint_num: Optional[tuple[int, int, int]] = None, potcar_map: Optional[Dict] = None) -> Dict[str, Any]:
         """
         提交VASP自洽场（SCF）计算任务
         
@@ -154,7 +155,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
             soc: 是否包含自旋轨道耦合效应，默认为True
             incar_tags: 额外的INCAR参数字典，会与默认设置合并。除非用户指定，不要擅自修改。
             kpoint_num: K点网格设置，格式为(nx, ny, nz)的元组，如果不提供则使用自动密度40
-        
+            potcar_map: POTCAR标签设置，格式为{element: potcar}的字典。例如{"Bi": "Bi_pv", "Se": "Se_pv"}。除非用户指定，不要擅自修改。
         Returns:
             包含任务提交结果的字典，包含以下键：
             - calculation_id: 计算任务唯一标识符
@@ -206,7 +207,8 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
             incar_dict=incar,
             chgcar_path=chgcar_path,
             wavecar_path=wavecar_path,
-            attachment_path=attachment_path
+            attachment_path=attachment_path,
+            potcar_map=potcar_map
         )
         
         # 保存记录
@@ -227,7 +229,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
         return llm_friendly_result
 
     @mcp.tool(name="vasp_nscf")
-    async def vasp_nscf_tool(restart_id: str, soc: bool=True, incar_tags: Optional[Dict] = None, kpath: Optional[str] = None, n_kpoints: Optional[int] = None, ) -> Dict[str, Any]:
+    async def vasp_nscf_tool(restart_id: str, soc: bool=True, incar_tags: Optional[Dict] = None, kpath: Optional[str] = None, n_kpoints: Optional[int] = None, potcar_map: Optional[Dict] = None) -> Dict[str, Any]:
         """
         提交VASP非自洽场（NSCF）计算任务，用于计算能带结构。提供的INCAR参数应当尽可能与前序SCF计算一致。
         
@@ -240,7 +242,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
                 - str: 用户指定的路径，例如"GMKG"
                 除非用户指定，不要擅自修改。
             n_kpoints: 每段K点路径的点数，默认为40
-        
+            potcar_map: POTCAR标签设置，格式为{element: potcar}的字典。例如{"Bi": "Bi_pv", "Se": "Se_pv"}。除非用户指定，不要擅自修改。
         Returns:
             包含任务提交结果的字典，包含以下键：
             - calculation_id: 计算任务唯一标识符
@@ -312,7 +314,8 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
             incar_dict=incar,
             chgcar_path=chgcar_path,
             wavecar_path=wavecar_path,
-            attachment_path=attachment_path
+            attachment_path=attachment_path,
+            potcar_map=potcar_map
         )
         
         # 保存记录
@@ -440,7 +443,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
                         plt.xlabel('k点')
                         plt.legend()
                     ```
-                    示例代码2，绘制能带(有特殊画图需求时应当参考本示例)：
+                    示例代码2，绘制能带(有特殊画图需求时应当参考本示例，例如需要将两个能带画在一起时)：
                     ```python
                     # 获取第一个计算数据
                     band_calc_id = list(data.keys())[0]
@@ -557,24 +560,38 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
         返回:
             Dict包含搜索结果和下载状态
         """
-        result = search_materials_project(api_key=mp_api_key, search_criteria=search_criteria, download_path=mp_download_path, limit=limit)
+        result = search_materials_project(api_key=mp_api_key, search_criteria=search_criteria, download_path=structure_path, limit=limit)
         return result
 
     @mcp.tool(name="analyze_crystal_structure")
     async def analyze_crystal_structure_tool(struct_path: str) -> Dict[str, Any]:
         """
-        参数:
+        Args:
             struct_input: 结构输入，可以是文件路径或pymatgen Structure对象
         """
         return analyze_crystal_structure(struct_path)
 
-    @mcp.tool(name="create_supercell")
-    async def create_supercell_tool(struct_path: str, supercell_matrix: List[List[int]]) -> Dict[str, Any]:
+    @mcp.tool(name="create_crystal_structure")
+    async def create_crystal_structure_tool(positions: List[List[float]], elements: List[str], lattice_vectors: List[List[float]], cartesian: bool) -> Dict[str, Any]:
+        """
+        给定原子位置、元素、晶格向量，创建晶体结构，并保存到文件中。
+        Args:
+            positions: 原子位置，格式为[[x1, y1, z1], [x2, y2, z2], ...]
+            elements: 元素列表，例如 ["Li", "F"]
+            lattice_vectors: 晶格向量，格式为[[a1, b1, c1], [a2, b2, c2], [a3, b3, c3]]
+            cartesian: 是否使用笛卡尔坐标
+        Returns:
+            包含创建的晶体结构文件路径的字典。
+        """
+        return create_crystal_structure(np.array(positions), elements, np.array(lattice_vectors), cartesian, structure_path)
+
+    @mcp.tool(name="make_supercell")
+    async def make_supercell_tool(struct_path: str, supercell_matrix: List[List[int]]) -> Dict[str, Any]:
         """
         参数:
             struct_input: 结构输入，可以是文件路径或pymatgen Structure对象
         """
-        return create_supercell(struct_path, supercell_matrix)
+        return make_supercell(struct_path, supercell_matrix)
 
     @mcp.tool(name="symmetrize_structure")
     async def symmetrize_structure_tool(struct_path: str) -> Dict[str, Any]:

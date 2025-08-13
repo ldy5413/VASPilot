@@ -93,7 +93,7 @@ def _submit_slurm_job(calc_type: str, calculate_path: str,
 
 
 def vasp_relaxation(calculation_id: str, work_dir: str, struct: Structure, 
-                   kpoints: Kpoints, incar_dict: dict, attachment_path: Optional[str] = None) -> Dict[str, Any]:
+                   kpoints: Kpoints, incar_dict: dict, attachment_path: Optional[str] = None, potcar_map: Optional[Dict] = None) -> Dict[str, Any]:
     """
     提交VASP结构优化计算任务
     
@@ -110,7 +110,6 @@ def vasp_relaxation(calculation_id: str, work_dir: str, struct: Structure,
     """
     Name = calculation_id
     calc_dir = os.path.abspath(f'{work_dir}/{Name}')
-    
     # 创建VASP输入文件
     # 手动获取元素列表，确保顺序与POSCAR一致
     poscar = Poscar(struct)
@@ -119,15 +118,22 @@ def vasp_relaxation(calculation_id: str, work_dir: str, struct: Structure,
         species: Element
         if unique_species:
             if species.symbol != unique_species[-1]:
+                if species.symbol not in potcar_map:
+                    potcar_map[species.symbol] = species.symbol
                 unique_species.append(species.symbol)
         else:
+            if species.symbol not in potcar_map:
+                potcar_map[species.symbol] = species.symbol
             unique_species.append(species.symbol)
-    
+    potcar_symbols = []
+    for symbol in unique_species:
+        potcar_symbols.append(potcar_map[symbol])
+
     vasp_input = VaspInput(
         poscar=poscar,
         incar=incar_dict,
         kpoints=kpoints,
-        potcar=Potcar(unique_species)
+        potcar=Potcar(potcar_symbols)
     )
     
     # 准备结构优化目录
@@ -141,7 +147,7 @@ def vasp_relaxation(calculation_id: str, work_dir: str, struct: Structure,
 
 def vasp_scf(calculation_id: str, work_dir: str, struct: Structure, 
             kpoints: Kpoints, incar_dict: dict, chgcar_path: Optional[str] = None, 
-            wavecar_path: Optional[str] = None, attachment_path: Optional[str] = None) -> Dict[str, Any]:
+            wavecar_path: Optional[str] = None, attachment_path: Optional[str] = None, potcar_map: Optional[Dict] = None) -> Dict[str, Any]:
     """
     提交VASP自洽场计算任务
     
@@ -160,23 +166,32 @@ def vasp_scf(calculation_id: str, work_dir: str, struct: Structure,
     """
     Name = calculation_id
     calc_dir = os.path.abspath(f'{work_dir}/{Name}')
-    
+    if potcar_map is None:
+        potcar_map = {}
     # 创建VASP输入文件
     # 手动获取元素列表，确保顺序与POSCAR一致
     poscar = Poscar(struct)
     unique_species = []
     for species in poscar.structure.species:
+        species: Element
         if unique_species:
             if species.symbol != unique_species[-1]:
+                if species.symbol not in potcar_map:
+                    potcar_map[species.symbol] = species.symbol
                 unique_species.append(species.symbol)
         else:
+            if species.symbol not in potcar_map:
+                potcar_map[species.symbol] = species.symbol
             unique_species.append(species.symbol)
-    
+    potcar_symbols = []
+    for symbol in unique_species:
+        potcar_symbols.append(potcar_map[symbol])
+
     vasp_input = VaspInput(
         poscar=poscar,
         incar=incar_dict,
         kpoints=kpoints,
-        potcar=Potcar(unique_species)
+        potcar=Potcar(potcar_symbols)
     )
 
     # 准备自洽场计算目录
@@ -196,7 +211,8 @@ def vasp_scf(calculation_id: str, work_dir: str, struct: Structure,
 
 def vasp_nscf(calculation_id: str, work_dir: str, struct: Structure, 
              kpoints: Kpoints, incar_dict: dict, chgcar_path: str, 
-             wavecar_path: Optional[str] = None, attachment_path: Optional[str] = None) -> Dict[str, Any]:
+             wavecar_path: Optional[str] = None, attachment_path: Optional[str] = None, 
+             potcar_map: Optional[Dict] = None) -> Dict[str, Any]:
     """
     提交VASP非自洽场计算任务（能带计算）
     
@@ -209,6 +225,7 @@ def vasp_nscf(calculation_id: str, work_dir: str, struct: Structure,
         chgcar_path: CHGCAR文件路径
         wavecar_path: WAVECAR文件路径
         attachment_path: 附件路径，包含SLURM脚本等文件
+        potcar_map: POTCAR映射字典
         
     返回:
         Dict包含slurm_id、calc_type、calculate_path、success、error、status等信息
@@ -221,17 +238,25 @@ def vasp_nscf(calculation_id: str, work_dir: str, struct: Structure,
     poscar = Poscar(struct)
     unique_species = []
     for species in poscar.structure.species:
+        species: Element
         if unique_species:
             if species.symbol != unique_species[-1]:
+                if species.symbol not in potcar_map:
+                    potcar_map[species.symbol] = species.symbol
                 unique_species.append(species.symbol)
         else:
+            if species.symbol not in potcar_map:
+                potcar_map[species.symbol] = species.symbol
             unique_species.append(species.symbol)
-    
+    potcar_symbols = []
+    for symbol in unique_species:
+        potcar_symbols.append(potcar_map[symbol])
+
     vasp_input = VaspInput(
         poscar=poscar,
         incar=incar_dict,
         kpoints=kpoints,
-        potcar=Potcar(unique_species)
+        potcar=Potcar(potcar_symbols)
     )
     
     # 准备能带计算目录

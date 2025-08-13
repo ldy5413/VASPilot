@@ -9,7 +9,8 @@ from pymatgen.transformations.advanced_transformations import SupercellTransform
 from pymatgen.transformations.standard_transformations import RotationTransformation
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.analysis.structure_matcher import StructureMatcher
-
+import uuid
+from pymatgen.io.vasp import Poscar
 
 def analyze_crystal_structure(struct_input: Union[str, Structure]) -> Dict[str, Any]:
     """
@@ -250,8 +251,47 @@ def search_materials_project(
             "search_criteria": search_criteria
         }
 
+def create_crystal_structure(
+    positions: np.ndarray,
+    elements: List[str],
+    lattice_vectors: np.ndarray,
+    cartesian: bool = False,
+    output_path: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    创建晶体结构
+    
+    参数:
+        positions: 原子位置，格式为[[x1, y1, z1], [x2, y2, z2], ...]
+        elements: 元素列表，例如 ["Li", "F"]
+        lattice_vectors: 晶格向量，格式为[[a1, b1, c1], [a2, b2, c2], [a3, b3, c3]]
+        output_path: 输出文件夹路径，如果提供则保存结构文件
+        
+    返回:
+        Dict包含创建的结构和相关信息
+    """
+    try:
+        structure = Structure(lattice=Lattice(lattice_vectors), species=elements, coords=positions, coords_are_cartesian=cartesian)
+        structure_id = str(uuid.uuid4())
+        structure_name = f"{structure.composition.reduced_formula}_{structure_id}.vasp"
+        if output_path:
+            os.makedirs(output_path, exist_ok=True)
+            poscar = Poscar(structure, sort_structure=True)
+            poscar.write_file(filename=f"{output_path}/{structure_name}")
+        
+        return {
+            "success": True,
+            "error": None,
+            "output_path": f"{output_path}/{structure_name}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"创建晶体结构时出错:\n {str(e)}",
+        }
+    
 
-def create_supercell(
+def make_supercell(
     struct_path: str,
     supercell_matrix: List[List[int]],
     output_path: Optional[str] = None
@@ -358,7 +398,7 @@ def rotate_structure(
         # 如果提供了输出路径，保存结构文件
         if output_path:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            rotated_struct.to(filename=output_path)
+            rotated_struct.to(filename=output_path, fmt="poscar")
         
         return {
             "success": True,

@@ -22,6 +22,7 @@ from typing import Dict, Any, List, Optional
 from flask import Flask, render_template, request, jsonify, g
 
 from markdown import markdown
+import ctypes
 
 # 添加项目路径到sys.path
 current_dir = Path(__file__).parent  # flask_server/
@@ -65,6 +66,22 @@ class FlaskCrewServer(CrewServer):
         
         # 设置路由
         self._setup_routes()
+
+    def _raise_exception_in_thread(self, thread: threading.Thread, exception_type=SystemExit) -> bool:
+        """在目标线程中异步注入异常。
+        返回是否成功。
+        """
+        tid = getattr(thread, "ident", None)
+        if not tid:
+            return False
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), ctypes.py_object(exception_type))
+        if res == 0:
+            return False
+        if res > 1:
+            # 回滚并报告失败
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), None)
+            return False
+        return True
 
     def _init_db(self):
         """初始化数据库"""
@@ -582,9 +599,17 @@ class FlaskCrewServer(CrewServer):
             if conversation_id in self.running_tasks:
                 thread = self.running_tasks[conversation_id]
                 if thread.is_alive():
-                    # 由于Python线程无法直接强制停止，我们通过设置状态来标记停止
-                    # 实际的停止需要在crew执行过程中检查这个状态
-                    self.system_log(f"标记任务 {conversation_id} 为停止状态")
+                    self.system_log(f"尝试终止任务线程: {conversation_id}")
+                    stopped = self._raise_exception_in_thread(thread, SystemExit)
+                    if not stopped:
+                        self.system_log(f"无法向任务线程注入异常，标记任务为停止: {conversation_id}")
+                        return False
+                    # 等待线程退出
+                    thread.join(timeout=5)
+                    if thread.is_alive():
+                        self.system_log(f"任务线程未在超时内退出: {conversation_id}")
+                        return False
+                    self.system_log(f"任务 {conversation_id} 线程已终止")
                     return True
                 else:
                     self.system_log(f"任务 {conversation_id} 已经停止")
@@ -631,7 +656,6 @@ class FlaskCrewServer(CrewServer):
             crew.tasks = [task]
             
             self.system_log("开始执行任务...")
-            
             # 执行crew
             result = crew.kickoff()
             
