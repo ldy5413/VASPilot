@@ -60,6 +60,9 @@ class ServerListener(BaseEventListener):
         system_prompt = '\nYou ONLY have access to the following tools, and should NEVER make up tools that are not listed here:'
         tool_output = tool_output.split(system_prompt)[0]
         tool_output = tool_output.replace("'", '"')
+        tool_output = tool_output.replace("None", "null")
+        tool_output = tool_output.replace("True", "true")
+        tool_output = tool_output.replace("False", "false")
         try:
             # 尝试解析JSON
             return json.loads(tool_output)

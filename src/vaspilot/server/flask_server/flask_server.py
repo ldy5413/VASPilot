@@ -23,6 +23,7 @@ from flask import Flask, render_template, request, jsonify, g
 
 from markdown import markdown
 import ctypes
+from werkzeug.utils import secure_filename
 
 # 添加项目路径到sys.path
 current_dir = Path(__file__).parent  # flask_server/
@@ -57,6 +58,10 @@ class FlaskCrewServer(CrewServer):
         template_folder = str(current_dir / "templates")
         self.app = Flask(__name__, template_folder=template_folder)
         self.app.secret_key = 'crew-ai-flask-server'
+        
+        # 上传目录
+        self.upload_dir = os.path.join(self.work_dir, 'uploads')
+        os.makedirs(self.upload_dir, exist_ok=True)
         
         self.generator = VaspCrew(self.config)
         
@@ -250,6 +255,29 @@ class FlaskCrewServer(CrewServer):
                                  title=self.title,
                                  recent_tasks=recent_tasks)
 
+        @self.app.route('/upload', methods=['POST'])
+        def upload_structure():
+            """上传晶体结构文件，返回保存后的绝对路径"""
+            try:
+                if 'file' not in request.files:
+                    return jsonify({'error': 'File field not found'}), 400
+                file = request.files['file']
+                if not file or file.filename == '':
+                    return jsonify({'error': 'No file uploaded'}), 400
+
+                filename = secure_filename(file.filename)
+                lower_name = filename.lower()
+                if not (lower_name.endswith(('.vasp', '.cif', '.xyz')) or lower_name in ('poscar', 'contcar')):
+                    return jsonify({'error': 'File type not supported. Only .vasp/.cif/.xyz or POSCAR/CONTCAR are allowed'}), 400
+
+                unique_name = f"{uuid.uuid4().hex}_{filename}"
+                save_path = os.path.join(self.upload_dir, unique_name)
+                file.save(save_path)
+                abs_path = os.path.abspath(save_path)
+                return jsonify({'success': True, 'path': abs_path, 'filename': filename})
+            except Exception as e:
+                return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+
         @self.app.route('/submit', methods=['POST'])
         def submit_task():
             """提交任务"""
@@ -258,7 +286,7 @@ class FlaskCrewServer(CrewServer):
                 task_description = data.get('task_description', '').strip()
                 
                 if not task_description:
-                    return jsonify({'error': '请输入有效的任务描述'}), 400
+                    return jsonify({'error': 'Please enter a valid task description'}), 400
                 
                 # 检查是否有任务在运行
                 db = self._get_db()
@@ -266,7 +294,7 @@ class FlaskCrewServer(CrewServer):
                 running_count = cursor.fetchone()['count']
                 
                 if running_count > 0:
-                    return jsonify({'error': '当前已有任务在执行中，请等待完成后再提交新任务'}), 400
+                    return jsonify({'error': 'There is a task running, please wait for it to complete before submitting a new task'}), 400
                 
                 # 创建任务记录
                 conversation_id = str(uuid.uuid4())
@@ -288,18 +316,18 @@ class FlaskCrewServer(CrewServer):
                 return jsonify({
                     'success': True,
                     'conversation_id': conversation_id,
-                    'message': '任务已提交，开始执行'
+                    'message': 'Task submitted, starting execution'
                 })
                 
             except Exception as e:
-                return jsonify({'error': f'服务器错误: {str(e)}'}), 500
+                return jsonify({'error': f'Server error: {str(e)}'}), 500
 
         @self.app.route('/task/<conversation_id>')
         def task_detail(conversation_id):
             """任务详情页面"""
             task = self._get_task_by_id(conversation_id)
             if not task:
-                return "任务未找到", 404
+                return "Task not found", 404
             
             logs = self._get_task_logs(conversation_id)
             recent_tasks = self._get_recent_tasks()
@@ -315,7 +343,7 @@ class FlaskCrewServer(CrewServer):
             """获取任务状态API"""
             task = self._get_task_by_id(conversation_id)
             if not task:
-                return jsonify({'error': '任务未找到'}), 404
+                return jsonify({'error': 'Task not found'}), 404
             
             return jsonify({
                 'status': task['status'],
@@ -328,7 +356,7 @@ class FlaskCrewServer(CrewServer):
             """获取任务日志API"""
             task = self._get_task_by_id(conversation_id)
             if not task:
-                return jsonify({'error': '任务未找到'}), 404
+                return jsonify({'error': 'Task not found'}), 404
             
             logs = self._get_task_logs(conversation_id)
             
@@ -372,7 +400,7 @@ class FlaskCrewServer(CrewServer):
                     })
                 return jsonify(tasks_data)
             except Exception as e:
-                return jsonify({'error': f'获取任务列表失败: {str(e)}'}), 500
+                return jsonify({'error': f'Failed to get task list: {str(e)}'}), 500
 
         @self.app.route('/api/files/<conversation_id>/<path:filename>')
         def serve_task_file(conversation_id, filename):
@@ -412,13 +440,13 @@ class FlaskCrewServer(CrewServer):
                 # 安全检查：对于绝对路径，如果没有明确禁止，则允许访问
                 if not is_absolute_path and not self.allow_path:
                     if not file_path.startswith(task_dir) and not file_path.startswith(self.work_dir):
-                        abort(403, description="访问被拒绝：文件路径不在允许范围内")
+                        abort(403, description="Access denied: file path not in allowed range")
                 elif is_absolute_path:
                     print(f"[DEBUG] 绝对路径访问被允许")
                 
                 # 检查文件是否存在
                 if not os.path.exists(file_path):
-                    abort(404, description=f"文件未找到: {decoded_filename}")
+                    abort(404, description=f"File not found: {decoded_filename}")
                 
                 # 根据文件扩展名设置MIME类型
                 if decoded_filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
@@ -433,7 +461,7 @@ class FlaskCrewServer(CrewServer):
                 
             except Exception as e:
                 import traceback
-                abort(500, description=f"文件服务错误: {str(e)}")
+                abort(500, description=f"File service error: {str(e)}")
 
         @self.app.route('/api/files/<conversation_id>/list')
         def list_task_files(conversation_id):
@@ -477,7 +505,7 @@ class FlaskCrewServer(CrewServer):
                 return jsonify({'files': files})
                 
             except Exception as e:
-                return jsonify({'error': f'列出文件失败: {str(e)}'}), 500
+                return jsonify({'error': f'Failed to list files: {str(e)}'}), 500
 
         @self.app.route('/api/task/<conversation_id>/stop', methods=['POST'])
         def stop_task(conversation_id):
@@ -714,16 +742,30 @@ class FlaskCrewServer(CrewServer):
         if current_conversation_id:
             self._log_to_db(current_conversation_id, 'agent_output', log_content, role_name=agent_role)
 
-    def tool_input(self, tool_name: str, message: Dict[str, Any]):
+    def tool_input(self, tool_name: str, message: Any):
         """实现Tool输入方法"""
-        log_content = f"[{tool_name}] {json.dumps(message, ensure_ascii=False, indent=2)}"
+        if isinstance(message, (dict, list)):
+            log_content = json.dumps(message, ensure_ascii=False)
+        else:
+            try:
+                parsed = json.loads(str(message))
+                log_content = json.dumps(parsed, ensure_ascii=False)
+            except Exception:
+                log_content = json.dumps({"raw": str(message)}, ensure_ascii=False)
         current_conversation_id = getattr(self, '_current_conversation_id', None)
         if current_conversation_id:
             self._log_to_db(current_conversation_id, 'tool_input', log_content, role_name=tool_name)
 
-    def tool_output(self, tool_name: str, message: Dict[str, Any]):
+    def tool_output(self, tool_name: str, message: Any):
         """实现Tool输出方法"""
-        log_content = f"[{tool_name}] {json.dumps(message, ensure_ascii=False, indent=2)}"
+        if isinstance(message, (dict, list)):
+            log_content = json.dumps(message, ensure_ascii=False)
+        else:
+            try:
+                parsed = json.loads(str(message))
+                log_content = json.dumps(parsed, ensure_ascii=False)
+            except Exception:
+                log_content = json.dumps({"raw": str(message)}, ensure_ascii=False)
         current_conversation_id = getattr(self, '_current_conversation_id', None)
         if current_conversation_id:
             self._log_to_db(current_conversation_id, 'tool_output', log_content, role_name=tool_name)

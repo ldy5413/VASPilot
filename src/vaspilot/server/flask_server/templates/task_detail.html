@@ -86,20 +86,7 @@
             color: #6c757d; 
         }
         
-        /* JSON表格样式 */
-        .json-table { 
-            font-size: 0.9em; 
-            margin: 1em 0; 
-        }
-        .json-table th { 
-            background-color: #f8f9fa; 
-            font-weight: 600; 
-        }
-        .json-table td { 
-            word-break: break-word; 
-            max-width: 300px; 
-        }
-        
+
         /* 图片显示样式 */
         .content-image { 
             max-width: 100%; 
@@ -363,7 +350,8 @@
                                          data-type="{{ log.type }}" 
                                          data-role-name="{{ log.role_name or '' }}"
                                          data-content="{{ log.content|escape }}"
-                                         data-timestamp="{{ log.timestamp }}">
+                                         data-timestamp="{{ log.timestamp }}"
+                                         data-log-index="{{ loop.index0 }}">
                                         <div class="d-flex w-100 justify-content-between align-items-center">
                                             <div class="d-flex align-items-center">
                                                 <span class="activity-badge 
@@ -457,123 +445,9 @@
         refreshInterval = null;
     }
     
-    // 将JSON对象转换为HTML表格
-    function jsonToTable(obj, title = 'JSON数据') {
-        if (typeof obj !== 'object' || obj === null) {
-            return '<span class="text-muted">' + String(obj) + '</span>';
-        }
-        
-        // 检查是否是解析错误的输出
-        if (obj.error_type === 'json_parse_failed' && obj.raw_output) {
-            return 
-                '<div class="alert alert-warning">' +
-                    '<h6><i class="fas fa-exclamation-triangle"></i> JSON解析失败</h6>' +
-                    '<p><strong>错误:</strong> ' + obj.parse_error + '</p>' +
-                    '<details>' +
-                        '<summary>查看原始输出</summary>' +
-                        '<pre class="mt-2 p-2 bg-light border rounded">' + obj.raw_output + '</pre>' +
-                    '</details>' +
-                '</div>';
-        }
-        
-        // 检查是否是处理失败的输出
-        if (obj.error === 'tool_output_processing_failed') {
-            return 
-                '<div class="alert alert-danger">' +
-                    '<h6><i class="fas fa-times-circle"></i> Tool output processing failed</h6>' +
-                    '<p><strong>Tool:</strong> ' + obj.tool_name + '</p>' +
-                    '<p><strong>Error:</strong> ' + obj.error_message + '</p>' +
-                    '<details>' +
-                        '<summary>View raw output</summary>' +
-                        '<pre class="mt-2 p-2 bg-light border rounded">' + obj.raw_output + '</pre>' +
-                    '</details>' +
-                '</div>';
-        }
-        
-        let tableHtml = '<table class="table table-bordered table-sm json-table">';
-        tableHtml += '<thead><tr><th colspan="2" class="bg-primary text-white">' + title + '</th></tr></thead><tbody>';
-        
-        for (const [key, value] of Object.entries(obj)) {
-            const formattedKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
-            let formattedValue;
-            
-            if (typeof value === 'object' && value !== null) {
-                if (Array.isArray(value)) {
-                    if (value.length === 0) {
-                        formattedValue = '<em class="text-muted">空数组</em>';
-                    } else {
-                        // 检查数组元素类型
-                        const allSimple = value.every(item => typeof item !== 'object');
-                        if (allSimple && value.length <= 10) {
-                            formattedValue = '<ul class="mb-0 list-unstyled">' + value.map(item => '<li>• ' + String(item) + '</li>').join('') + '</ul>';
-                        } else if (allSimple) {
-                            formattedValue = '<div class="small">数组 (' + value.length + ' 个元素): ' + value.slice(0, 3).map(String).join(', ') + (value.length > 3 ? '...' : '') + '</div>';
-                        } else {
-                            formattedValue = '<div class="small text-muted">复杂数组 (' + value.length + ' 个对象元素)</div>';
-                        }
-                    }
-                } else {
-                    // 递归处理嵌套对象
-                    const nestedKeys = Object.keys(value);
-                    if (nestedKeys.length === 0) {
-                        formattedValue = '<em class="text-muted">空对象</em>';
-                    } else {
-                        formattedValue = jsonToTable(value, formattedKey + ' 详情');
-                    }
-                }
-            } else {
-                // 基本类型值
-                const valueStr = String(value);
-                if (valueStr.length > 100) {
-                    formattedValue = '<div class="text-wrap"><span>' + valueStr.substring(0, 100) + '</span><small class="text-muted">... (' + valueStr.length + ' 字符)</small></div>';
-                } else {
-                    // 检查是否是文件路径并添加查看按钮
-                    if (valueStr.includes('.png')) {
-                        // 对路径进行URL编码，避免在onclick中传递有问题的字符
-                        const encodedValue = encodeURIComponent(valueStr);
-                        const buttonId = 'json_img_btn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                        formattedValue = 
-                            '<div class="file-link-container">' +
-                                '<code class="file-path">' + valueStr + '</code>' +
-                                '<button class="btn btn-sm btn-outline-primary ms-2" onclick="showImageFile(decodeURIComponent(\'' + encodedValue + '\'), \'' + buttonId + '\')">' +
-                                    '<i class="fas fa-image"></i> View' +
-                                '</button>' +
-                            '</div>';
-                    } else if (valueStr.includes('.vasp') || valueStr.includes('.xyz') || valueStr.includes('.cif')) {
-                        // 对路径进行URL编码，避免在onclick中传递有问题的字符
-                        const encodedValue = encodeURIComponent(valueStr);
-                        const buttonId = 'json_vasp_btn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                        formattedValue = 
-                            '<div class="file-link-container">' +
-                                '<code class="file-path">' + valueStr + '</code>' +
-                                '<button class="btn btn-sm btn-outline-success ms-2" onclick="showVaspFile(decodeURIComponent(\'' + encodedValue + '\'), \'' + buttonId + '\')">' +
-                                    '<i class="fas fa-cube"></i> View' +
-                                '</button>' +
-                            '</div>';
-                    } else if (typeof value === 'boolean') {
-                        formattedValue = '<span class="badge ' + (value ? 'bg-success' : 'bg-secondary') + '">' + valueStr + '</span>';
-                    } else if (typeof value === 'number') {
-                        formattedValue = '<span class="text-info">' + valueStr + '</span>';
-                    } else {
-                        formattedValue = valueStr;
-                    }
-                }
-            }
-            
-            tableHtml += '<tr><td style="width: 30%;"><strong>' + formattedKey + '</strong></td><td>' + formattedValue + '</td></tr>';
-        }
-        
-        tableHtml += '</tbody></table>';
-        return tableHtml;
-    }
-    
     // 查找并处理文件路径
     function processFilePaths(content) {
-        // 先检查内容是否已经包含文件链接容器，避免重复处理
-        if (content.includes('file-link-container')) {
-            return content;
-        }
-        
+        // 不再因为包含 file-link-container 而整体跳过，避免遗漏后续新路径
         let processedContent = content;
         
         // 专门处理已经在<code>标签内的文件路径
@@ -591,7 +465,7 @@
             filePatterns.forEach(pattern => {
                 // 简单但可靠的方法：查找独立的<code>标签
                 const codePattern = new RegExp(
-                    '<code>([^<]*\\.' + pattern.ext + ')</code>', 
+                    '<code>(\/[^<]*\\.' + pattern.ext + ')</code>',
                     'gi'
                 );
                 
@@ -661,7 +535,7 @@
             // 处理每个文本节点
             textNodes.forEach(textNode => {
                 const text = textNode.textContent;
-                const pattern = new RegExp('([^\\s\'\"<>]*\\.' + fileExtension + ')\\b', 'gi');
+                const pattern = new RegExp('(/[^\\s\'\"<>]*\\.' + fileExtension + ')\\b', 'gi');
                 const matches = [...text.matchAll(pattern)];
                 
                 if (matches.length > 0) {
@@ -718,7 +592,7 @@
         } catch (error) {
             console.warn('Error processing PNG file path:', error);
             // 回退到简单的正则处理，但增加安全检查
-            const imagePattern = /(?<!<[^>]*?)([^\s'"<>]*\.png)\b(?![^<]*?>)/gi;
+            const imagePattern = /(?<!<[^>]*?)(\/[^\s'"<>]*\.png)\b(?![^<]*?>)/gi;
             processedContent = processedContent.replace(imagePattern, function(match, filePath, offset, string) {
                 // 检查是否在HTML标签内
                 const beforeMatch = string.substring(0, offset);
@@ -751,7 +625,7 @@
         } catch (error) {
             console.warn('Error processing VASP file path:', error);
             // 回退到简单的正则处理，但增加安全检查
-            const vaspPattern = /(?<!<[^>]*?)([^\s'"<>]*\.vasp)\b(?![^<]*?>)/gi;
+            const vaspPattern = /(?<!<[^>]*?)(\/[^\s'"<>]*\.vasp)\b(?![^<]*?>)/gi;
             processedContent = processedContent.replace(vaspPattern, function(match, filePath, offset, string) {
                 // 检查是否在HTML标签内
                 const beforeMatch = string.substring(0, offset);
@@ -784,7 +658,7 @@
         } catch (error) {
             console.warn('处理XYZ文件路径时出错:', error);
             // 回退到简单的正则处理
-            const xyzPattern = /(?<!<[^>]*?)([^\s'"<>]*\.xyz)\b(?![^<]*?>)/gi;
+            const xyzPattern = /(?<!<[^>]*?)(\/[^\s'"<>]*\.xyz)\b(?![^<]*?>)/gi;
             processedContent = processedContent.replace(xyzPattern, function(match, filePath, offset, string) {
                 const beforeMatch = string.substring(0, offset);
                 const afterMatch = string.substring(offset + match.length);
@@ -815,7 +689,7 @@
         } catch (error) {
             console.warn('处理CIF文件路径时出错:', error);
             // 回退到简单的正则处理
-            const cifPattern = /(?<!<[^>]*?)([^\s'"<>]*\.cif)\b(?![^<]*?>)/gi;
+            const cifPattern = /(?<!<[^>]*?)(\/[^\s'"<>]*\.cif)\b(?![^<]*?>)/gi;
             processedContent = processedContent.replace(cifPattern, function(match, filePath, offset, string) {
                 const beforeMatch = string.substring(0, offset);
                 const afterMatch = string.substring(offset + match.length);
@@ -846,29 +720,18 @@
     // 渲染内容
     function renderContent(content, type) {
         if (type === 'tool_input' || type === 'tool_output') {
-            try {
-                // 尝试解析JSON并转换为表格
-                const jsonData = JSON.parse(content);
-                const title = type === 'tool_input' ? 'Tool input' : 'Tool output';
-                return jsonToTable(jsonData, title);
-            } catch (e) {
-                // 如果不是JSON，按普通文本处理
-                const processedContent = processFilePaths(content);
-                return '<pre class="mb-0">' + processedContent + '</pre>';
-            }
+            const processedContent = processFilePaths(content);
+            return '<pre class="mb-0">' + processedContent + '</pre>';
         } else if (type === 'agent_input' || type === 'agent_output') {
             try {
-                // 先渲染Markdown，然后处理文件路径
                 const rendered = marked.parse(content);
                 const processedContent = processFilePaths(rendered);
                 return '<div class="markdown-content">' + processedContent + '</div>';
             } catch (e) {
-                // 如果Markdown解析失败，回退到普通文本
                 const processedContent = processFilePaths(content);
                 return '<pre class="mb-0">' + processedContent + '</pre>';
             }
         } else {
-            // 系统日志等其他类型保持原样
             return '<pre class="mb-0">' + content + '</pre>';
         }
     }
@@ -1111,7 +974,7 @@
             
             // 重新创建所有历史记录项
             logs.forEach((log, index) => {
-                const historyItem = createHistoryItem(log);
+                const historyItem = createHistoryItem(log, index);
                 historyContainer.appendChild(historyItem);
             });
             
@@ -1133,13 +996,16 @@
     }
     
     // 创建历史记录项目
-    function createHistoryItem(log) {
+    function createHistoryItem(log, index) {
         const historyItem = document.createElement('div');
         historyItem.className = 'list-group-item list-group-item-action history-item';
         historyItem.dataset.type = log.type;
         historyItem.dataset.roleName = log.role_name || '';
         historyItem.dataset.content = log.content;
         historyItem.dataset.timestamp = log.timestamp;
+        if (typeof index === 'number') {
+            historyItem.dataset.logIndex = index;
+        }
         
         // 调试信息（已移除以减少控制台噪音）
         
@@ -1410,26 +1276,54 @@
                     const renderResult = await mermaid.render('workflow-graph-' + Date.now(), mermaidCode);
                     workflowContainer.innerHTML = renderResult.svg;
                     
-                    // 手动绑定点击事件到SVG元素
+                    // 手动绑定点击事件到SVG元素（使用事件委托，兼容Mermaid生成的ID前缀）
                     const svgElement = workflowContainer.querySelector('svg');
                     if (svgElement) {
-                        // 为所有具有click属性的元素绑定事件
-                        activities.forEach((activity, index) => {
-                            const agentElement = svgElement.querySelector(`#${activity.id}`);
-                            if (agentElement) {
-                                agentElement.style.cursor = 'pointer';
-                                agentElement.addEventListener('click', function() {
-                                    jumpToActivityDetails(activity, 'agent', logs);
-                                });
+                        svgElement.style.cursor = 'pointer';
+                        svgElement.addEventListener('click', function(event) {
+                            const idChain = [];
+                            let node = event.target;
+                            let matched = false;
+
+                            while (node && node !== svgElement) {
+                                if (node.tagName && node.tagName.toLowerCase() === 'g' && node.id) {
+                                    idChain.push(node.id);
+                                    const rawId = node.id.replace(/^flowchart-/, '');
+                                    // 去掉常见的前缀，如 label- / node-
+                                    const candidates = [rawId, rawId.replace(/^(label-|node-)/, '')];
+
+                                    let activityNode = null;
+                                    let toolNode = null;
+
+                                    for (const rid of candidates) {
+                                        activityNode = activities.find(a => rid === a.id || rid.startsWith(a.id + '-') || rid.endsWith('-' + a.id) || rid.includes('-' + a.id + '-'));
+                                        if (activityNode) break;
+                                    }
+                                    if (activityNode) {
+                                        jumpToActivityDetails(activityNode, 'agent', logs);
+                                        matched = true;
+                                        break;
+                                    }
+
+                                    for (const rid of candidates) {
+                                        toolNode = allTools.find(t => rid === t.id || rid.startsWith(t.id + '-') || rid.endsWith('-' + t.id) || rid.includes('-' + t.id + '-'));
+                                        if (toolNode) break;
+                                    }
+                                    if (toolNode) {
+                                        jumpToActivityDetails(toolNode, 'tool', logs);
+                                        matched = true;
+                                        break;
+                                    }
+                                }
+                                node = node.parentElement;
                             }
-                        });
-                        
-                        allTools.forEach((tool, toolIndex) => {
-                            const toolElement = svgElement.querySelector(`#${tool.id}`);
-                            if (toolElement) {
-                                toolElement.style.cursor = 'pointer';
-                                toolElement.addEventListener('click', function() {
-                                    jumpToActivityDetails(tool, 'tool', logs);
+
+                            if (!matched) {
+                                console.warn('Workflow click: no matching node found', {
+                                    clickedTag: event.target.tagName,
+                                    idChain: idChain,
+                                    knownAgentIds: activities.map(a => a.id),
+                                    knownToolIds: allTools.map(t => t.id)
                                 });
                             }
                         });
@@ -1446,6 +1340,57 @@
                         workflowContainer.appendChild(mermaidElement);
                         mermaid.init(undefined, mermaidElement);
                         console.log('使用回退方法渲染流程图');
+                        // 回退渲染后同样绑定事件（事件委托）
+                        const svgElement = workflowContainer.querySelector('svg');
+                        if (svgElement) {
+                            svgElement.style.cursor = 'pointer';
+                            svgElement.addEventListener('click', function(event) {
+                                const idChain = [];
+                                let node = event.target;
+                                let matched = false;
+
+                                while (node && node !== svgElement) {
+                                    if (node.tagName && node.tagName.toLowerCase() === 'g' && node.id) {
+                                        idChain.push(node.id);
+                                        const rawId = node.id.replace(/^flowchart-/, '');
+                                        const candidates = [rawId, rawId.replace(/^(label-|node-)/, '')];
+
+                                        let activityNode = null;
+                                        let toolNode = null;
+
+                                        for (const rid of candidates) {
+                                            activityNode = activities.find(a => rid === a.id || rid.startsWith(a.id + '-') || rid.endsWith('-' + a.id) || rid.includes('-' + a.id + '-'));
+                                            if (activityNode) break;
+                                        }
+                                        if (activityNode) {
+                                            jumpToActivityDetails(activityNode, 'agent', logs);
+                                            matched = true;
+                                            break;
+                                        }
+
+                                        for (const rid of candidates) {
+                                            toolNode = allTools.find(t => rid === t.id || rid.startsWith(t.id + '-') || rid.endsWith('-' + t.id) || rid.includes('-' + t.id + '-'));
+                                            if (toolNode) break;
+                                        }
+                                        if (toolNode) {
+                                            jumpToActivityDetails(toolNode, 'tool', logs);
+                                            matched = true;
+                                            break;
+                                        }
+                                    }
+                                    node = node.parentElement;
+                                }
+
+                                if (!matched) {
+                                    console.warn('Workflow click: no matching node found (fallback)', {
+                                        clickedTag: event.target.tagName,
+                                        idChain: idChain,
+                                        knownAgentIds: activities.map(a => a.id),
+                                        knownToolIds: allTools.map(t => t.id)
+                                    });
+                                }
+                            });
+                        }
                     } catch (fallbackError) {
                         console.error('回退渲染也失败:', fallbackError);
                         workflowContainer.innerHTML = 
@@ -1506,6 +1451,7 @@
                     targetType: 'agent_output',
                     targetTimestamp: targetLog.timestamp,
                     targetRoleName: targetLog.role_name,
+                    targetLogIndex: activity.outputLogIndex,
                     priority: 1
                 });
             }
@@ -1519,6 +1465,7 @@
                     targetType: 'agent_input',
                     targetTimestamp: targetLog.timestamp,
                     targetRoleName: targetLog.role_name,
+                    targetLogIndex: activity.logIndex,
                     priority: 2
                 });
             }
@@ -1529,6 +1476,7 @@
                     targetType: 'agent_output',
                     targetTimestamp: activity.outputTimestamp,
                     targetRoleName: activity.originalName || activity.name,
+                    targetLogIndex: activity.outputLogIndex,
                     priority: 3
                 });
             }
@@ -1538,6 +1486,7 @@
                     targetType: 'agent_input',
                     targetTimestamp: activity.timestamp,
                     targetRoleName: activity.originalName || activity.name,
+                    targetLogIndex: activity.logIndex,
                     priority: 4
                 });
             }
@@ -1554,6 +1503,7 @@
                     targetType: 'tool_input',
                     targetTimestamp: targetLog.timestamp,
                     targetRoleName: targetLog.role_name,
+                    targetLogIndex: activity.logIndex,
                     priority: 1
                 });
             }
@@ -1564,6 +1514,7 @@
                     targetType: 'tool_input',
                     targetTimestamp: activity.timestamp,
                     targetRoleName: activity.name,
+                    targetLogIndex: activity.logIndex,
                     priority: 2
                 });
             }
@@ -1572,33 +1523,88 @@
         // 按优先级排序候选项
         candidates.sort((a, b) => a.priority - b.priority);
         
-        // 遍历候选项，找到第一个匹配的历史记录项
+        // 遍历候选项，按优先级查找匹配项
         for (const candidate of candidates) {
-            for (const item of historyItems) {
-                const timestamp = item.dataset.timestamp;
-                const itemType = item.dataset.type;
-                const roleName = item.dataset.roleName;
-                
-                // 精确匹配：类型 + 时间戳 + 角色名称（如果有）
-                const typeMatch = itemType === candidate.targetType;
-                const timestampMatch = timestamp === candidate.targetTimestamp;
-                const roleMatch = !candidate.targetRoleName || 
-                                 !roleName || 
-                                 roleName === candidate.targetRoleName;
-                
-                if (typeMatch && timestampMatch && roleMatch) {
-                    targetItem = item;
-                    console.log('Found matching item:', {
-                        type: itemType,
-                        timestamp: timestamp,
-                        roleName: roleName,
-                        priority: candidate.priority
-                    });
-                    break;
+            let foundForCandidate = false;
+
+            // 1) 先尝试通过严格的 logIndex 匹配（唯一且稳定）
+            if (candidate.targetLogIndex !== undefined && candidate.targetLogIndex !== null) {
+                const strictMatch = Array.from(historyItems).find(item => 
+                    item.dataset.type === candidate.targetType &&
+                    item.dataset.logIndex !== undefined &&
+                    Number(item.dataset.logIndex) === Number(candidate.targetLogIndex)
+                );
+                if (strictMatch) {
+                    targetItem = strictMatch;
+                    foundForCandidate = true;
                 }
             }
-            
-            if (targetItem) break; // 找到目标项就跳出
+
+            // 2) 若未命中，按时间戳优先级匹配；同等条件下选与目标索引最近的项
+            if (!foundForCandidate) {
+                let bestItem = null;
+                let bestScore = Infinity;
+
+                for (const item of historyItems) {
+                    const timestamp = item.dataset.timestamp;
+                    const itemType = item.dataset.type;
+                    const roleName = item.dataset.roleName;
+
+                    if (itemType !== candidate.targetType) continue;
+
+                    const normalizeTs = (v) => (v == null ? '' : String(v).trim());
+                    const tsItem = normalizeTs(timestamp);
+                    const tsCand = normalizeTs(candidate.targetTimestamp);
+                    const secPart = (s) => s.replace('T',' ').slice(0, 19);
+                    const tsEqual = tsItem && tsCand && tsItem === tsCand;
+                    const tsEqualSec = tsItem && tsCand && secPart(tsItem) === secPart(tsCand);
+                    let tsNear = false;
+                    try {
+                        const ti = Date.parse(tsItem);
+                        const tc = Date.parse(tsCand);
+                        if (!isNaN(ti) && !isNaN(tc)) {
+                            tsNear = Math.abs(ti - tc) <= 2000; // 2 秒容差
+                        }
+                    } catch (_) {}
+
+                    const roleMatch = candidate.targetRoleName && roleName && roleName === candidate.targetRoleName;
+
+                    let quality = null;
+                    if (tsEqual) quality = 0;
+                    else if (tsEqualSec) quality = 1;
+                    else if (tsNear) quality = 2;
+                    else if (roleMatch) quality = 3;
+
+                    if (quality !== null) {
+                        let distance = 999999;
+                        if (candidate.targetLogIndex !== undefined && candidate.targetLogIndex !== null && item.dataset.logIndex !== undefined) {
+                            distance = Math.abs(Number(item.dataset.logIndex) - Number(candidate.targetLogIndex));
+                        }
+                        const score = quality * 100000 + distance;
+                        if (score < bestScore) {
+                            bestScore = score;
+                            bestItem = item;
+                        }
+                    }
+                }
+
+                if (bestItem) {
+                    targetItem = bestItem;
+                    foundForCandidate = true;
+                }
+            }
+
+            if (foundForCandidate) break; // 找到目标项就跳出
+        }
+        
+        if (!targetItem) {
+            console.warn('No matching history record item found (after all strategies):', {
+                type,
+                activity,
+                candidatesCount: candidates.length,
+                candidates,
+                availableItems: Array.from(historyItems).map(el => ({ type: el.dataset.type, ts: el.dataset.timestamp, role: el.dataset.roleName }))
+            });
         }
         
         if (targetItem) {
@@ -1792,6 +1798,35 @@
             document.getElementById('detail-title').textContent = title;
             document.getElementById('detail-content').innerHTML = detailHtml;
             
+            // 当 tool_output 的内容为 JSON 且包含 calculate_path 时，注入快捷链接
+            if (type === 'tool_output') {
+                try {
+                    const data = JSON.parse(content);
+                    const basePathRaw = data && (data.calculate_path || data.calc_path || data.calculation_path);
+                    if (basePathRaw && typeof basePathRaw === 'string' && basePathRaw.trim() !== '') {
+                        const basePath = basePathRaw.endsWith('/') ? basePathRaw.slice(0, -1) : basePathRaw;
+                        const incarPath = basePath + '/INCAR';
+                        const kpointsPath = basePath + '/KPOINTS';
+                        const outcarPath = basePath + '/OUTCAR';
+                        
+                        const linksContainer = document.createElement('div');
+                        linksContainer.className = 'mt-3';
+                        linksContainer.innerHTML =
+                            '<div class="small text-muted mb-2">计算目录: <code class="file-path">' + basePath + '</code></div>' +
+                            '<div>' +
+                                '<a href="#" class="btn btn-sm btn-outline-secondary me-2" onclick="showTextFile(decodeURIComponent(\'' + encodeURIComponent(incarPath) + '\'))">' +
+                                    '<i class="fas fa-file-alt"></i> 查看 INCAR</a>' +
+                                '<a href="#" class="btn btn-sm btn-outline-secondary me-2" onclick="showTextFile(decodeURIComponent(\'' + encodeURIComponent(kpointsPath) + '\'))">' +
+                                    '<i class="fas fa-file-alt"></i> 查看 KPOINTS</a>' +
+                                '<a href="#" class="btn btn-sm btn-outline-info" onclick="downloadByFilePath(decodeURIComponent(\'' + encodeURIComponent(outcarPath) + '\'))">' +
+                                    '<i class="fas fa-download"></i> 下载 OUTCAR</a>' +
+                            '</div>';
+                        const detailEl = document.getElementById('detail-content');
+                        detailEl.appendChild(linksContainer);
+                    }
+                } catch (e) { /* 非 JSON 忽略 */ }
+            }
+            
             if (window.Prism) {
                 Prism.highlightAll();
             }
@@ -1837,6 +1872,82 @@
             Jmol.setDocument(document);
             console.log('JSMol initialized');
         }
+    }
+    
+    // 构建文件 API URL（支持绝对路径）
+    function buildFileApiUrl(filePath) {
+        const taskId = getCurrentTaskId();
+        let processedPath = filePath || '';
+        if (processedPath.startsWith('/')) {
+            processedPath = '__ABS__' + processedPath;
+        }
+        const pathSegments = processedPath.split('/');
+        const encodedSegments = pathSegments.map(segment => encodeURIComponent(segment));
+        const encodedPath = encodedSegments.join('/');
+        return '/api/files/' + taskId + '/' + encodedPath;
+    }
+
+    function getFileName(filePath) {
+        if (!filePath) return 'file.txt';
+        const parts = filePath.split('/');
+        return parts[parts.length - 1] || 'file.txt';
+    }
+
+    // 以文本方式展示文件内容
+    function showTextFile(filePath) {
+        const displayArea = document.getElementById('file-display-area');
+        const displayTitle = document.getElementById('file-display-title');
+        const displayContent = document.getElementById('file-display-content');
+
+        const apiUrl = buildFileApiUrl(filePath);
+
+        displayTitle.innerHTML = '<i class="fas fa-file-alt"></i> 文件内容: ' + filePath;
+        displayContent.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <div class="mt-2">加载文件内容...</div>
+            </div>
+        `;
+        displayArea.style.display = 'block';
+        displayArea.scrollIntoView({ behavior: 'smooth' });
+
+        fetch(apiUrl)
+            .then(resp => {
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                return resp.text();
+            })
+            .then(text => {
+                displayContent.innerHTML = '';
+                const toolbar = document.createElement('div');
+                toolbar.className = 'mb-2';
+                toolbar.innerHTML = '<button class="btn btn-sm btn-outline-info" onclick="downloadByFilePath(\'' + filePath.replace(/'/g, "\\'") + '\')">' +
+                                    '<i class="fas fa-download"></i> 下载</button>';
+                const pre = document.createElement('pre');
+                pre.className = 'mb-0';
+                const code = document.createElement('code');
+                code.textContent = text;
+                pre.appendChild(code);
+                displayContent.appendChild(toolbar);
+                displayContent.appendChild(pre);
+                if (window.Prism) {
+                    Prism.highlightAll();
+                }
+            })
+            .catch(err => {
+                displayContent.innerHTML = 
+                    '<div class="alert alert-danger">' +
+                        '❌ 文件加载失败: ' + err.message + '<br>' +
+                        '<small class="text-muted">' + apiUrl + '</small>' +
+                    '</div>';
+            });
+    }
+
+    // 通过文件路径下载
+    function downloadByFilePath(filePath) {
+        const url = buildFileApiUrl(filePath);
+        downloadFile(url, getFileName(filePath));
     }
     
     // 显示图片文件
@@ -2076,7 +2187,7 @@
                             '<i class="fas fa-download"></i> download file to view' +
                         '</button>' +
                     '</div>' +
-                '</div>';
+                            '</div>';
         }
     }
     
@@ -2236,6 +2347,8 @@
     window.closeFileDisplay = closeFileDisplay;
     window.downloadFile = downloadFile;
     window.stopTask = stopTask;
+    window.showTextFile = showTextFile;
+    window.downloadByFilePath = downloadByFilePath;
     </script>
 </body>
 </html> 
