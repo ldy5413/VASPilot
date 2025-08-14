@@ -1,244 +1,259 @@
 # VASPilot
 
-基于CrewAI智能代理系统的VASP计算自动化工具，集成MCP（Model Control Protocol）协议，为材料科学研究提供智能化的计算工作流程。
+[中文版本](README_zh.md)
 
-## 项目特性
+**VASP automation and analysis using CrewAI framework with MCP support**
 
-- 🤖 **智能代理系统**: 基于CrewAI框架的多智能体协作，自动化VASP计算流程
-- 🔌 **MCP协议支持**: 符合Model Control Protocol标准，提供标准化的工具接口
-- 🧮 **全面的VASP计算**: 支持结构优化、SCF、NSCF、能带计算等多种计算类型
-- 🔍 **材料数据库集成**: 集成Materials Project API，便于材料搜索和结构获取
-- 📊 **可视化分析**: 内置matplotlib绘图工具，支持能带图、态密度图等分析
-- 🌐 **Web界面**: 提供Flask Web服务器，支持浏览器操作
-- ⚡ **异步处理**: 支持长时间运行的计算任务管理
-- 📝 **数据库管理**: SQLite数据库存储计算记录和结果
+VASPilot is an open-source platform that fully automates VASP workflows via a multi-agent architecture built on the CrewAI framework and a standardized Model Context Protocol (MCP). It handles every stage of a VASP study-from retrieving crystal structures and generating input files to submitting Slurm jobs, parsing error messages, and dynamically adjusting parameters for seamless restarts. 
 
-## 系统架构
+## Architecture
 
-```
-用户请求 → CrewAI智能代理 → MCP工具服务 → VASP计算 → 结果分析
-    ↓              ↓              ↓            ↓           ↓
-Web界面        多代理协作      标准化接口    HPC集群     可视化展示
-   ↓              ↓              ↓            ↓           ↓
-Flask服务      任务规划        工具调用      任务提交     图表生成
-```
+![Architecture Diagram](figs/Fig_1.png)
 
-## 核心组件
+VASPilot follows a modular, multi-agent architecture consisting of several key components:
 
-### 1. 智能代理系统
-- **晶体结构代理**: 负责结构搜索、分析和操作
-- **VASP计算代理**: 执行各种VASP计算任务
-- **结果验证代理**: 验证和分析计算结果
+### Core Components
 
-### 2. MCP工具服务
-- **VASP计算工具**: 结构优化、SCF、NSCF计算
-- **材料搜索工具**: Materials Project数据库集成
-- **结构分析工具**: 晶体结构分析和对称化
-- **可视化工具**: Python绘图和数据分析
+- **CrewAI Framework**: Multi-agent orchestration system that manages specialized AI agents
+- **MCP Server**: Model Control Protocol server providing tools for VASP calculations and materials analysis
+- **Flask Web Server**: Web interface for task submission and monitoring
+- **Specialized Agents**:
+  - **Crystal Structure Agent**: Handles structure search, analysis, and manipulation
+  - **VASP Agent**: Manages VASP calculations (relaxation, SCF, NSCF)
+  - **Result Validation Agent**: Validates and analyzes calculation results
+  - **Manager Agent**: Coordinates tasks between agents using hierarchical process
 
-### 3. Web服务器
-- **Flask界面**: 用户友好的Web操作界面
-- **任务管理**: 计算任务的提交、监控和管理
-- **结果展示**: 计算结果的可视化展示
+### Key Features
 
-## 安装和配置
+- **Intelligent Task Management**: AI agents automatically plan and execute complex workflows
+- **Materials Project Integration**: Direct access to crystal structures from Materials Project database
+- **VASP Automation**: Automated setup and execution of VASP calculations
+- **Memory Systems**: Long-term, short-term, and entity memory for context retention
+- **Real-time Monitoring**: Web interface for task tracking and result visualization
+- **Database Storage**: SQLite-based storage for calculation records and metadata
 
-### 1. 安装项目
+## Installation
 
+### Prerequisites
+
+- Python ≥ 3.10
+- Slurm
+
+### Quick Installation
+
+1. Clone the repository:
 ```bash
-# 克隆项目到本地
 git clone https://github.com/JiaxuanLiu-Arsko/VASPilot.git
-cd vaspilot
-
-# 安装项目（开发模式）
-pip install -e .
+cd VASPilot
 ```
 
-### 2. 配置文件
+2. Install the package:
+```bash
+pip install .
+```
 
-项目提供了两个主要配置文件：
+This will automatically install all required dependencies including CrewAI, FastMCP, PyMatGen, ASE, and other materials science libraries.
 
-#### CrewAI配置 (`configs/crew_config.yaml`)
-配置智能代理系统、LLM连接和嵌入模型：
+## Usage
+
+VASPilot requires configuration of two main components: the MCP server and the CrewAI server. Follow the basic setup example in `examples/1.Basic/` for initial configuration.
+
+### Prerequisites Configuration
+
+Before starting VASPilot, you need to configure several system-specific parameters:
+
+
+#### 1.Prepare Directories & Files
+
+Ensure the following directories exists and has been properly configured as in [Example](examples/1.Basic/):
+  - `mcp/` : Directories for MCP server
+    - `attachment/`: VASP job templates and auxiliary files
+        - `slurm.sh`: slurm script for submitting VASP calculations
+        - `vdw_kernel.bindat`: vdW kernel files. See https://www.vasp.at/wiki/index.php/Nonlocal_vdW-DF_functionals#Kernel_file_vdw_kernel.bindat for details
+    - `work/`: MCP tools working directories
+    - `record/`: Directory to store execution record of MCP tools
+    - `downloads/`: Directory to store downloaded structure files
+    - `uploads/`: User uploaded files
+  - `crew_server/` : Directories for web server and crewAI.
+    - `work/`: Web server working directories
+  - `configs/`: 
+    - `crew_config.yaml`: Configuration file for crewAI components.
+    - `crew_config_en.yaml`: Configuration file with english prompts.
+    - `mcp_config.yaml`: Configuration file for MCP server
+
+#### 2. MCP Server Configuration
+
+Edit `configs/mcp_config.yaml` and configure the following paths according to your system:
+
+```yaml
+# Directory for VASP job files (slurm.sh, vdw_kernel.bindat, etc.)
+attachment_path: your-path-to-example/mcp/attachment
+
+# Working directory for calculations
+work_dir: your-path-to-example/mcp/work
+
+# Database path for calculation records
+db_path: your-path-to-example/record/record.db
+
+# Materials Project API key
+mp_api_key: your-mp-api-key
+
+# Directory for downloaded structures
+structure_path: your-path-to-example/mcp/downloads
+```
+
+#### 3. CrewAI Server Configuration
+
+Edit `configs/crew_config.yaml` and configure:
 
 ```yaml
 llm_mapper:
-  deepseek-v3:
-    base_url: http://your-llm-server:8000/v1
+  your-model-name:
+    base_url: http://your.llm.server:port/v1
     api_key: your-api-key
-    model: your-model-name
+    model: openai/your-model-name
     temperature: 0
 
+# Embedding model for RAG memory
+embbeder:
+  url: http://your.embedding.server:port/v1/embeddings
+  model_id: BAAI/bge-m3
+  api_key: your-api-key
+
+# MCP server connection
 mcp_server:
   url: http://localhost:8933/mcp
   transport: streamable-http
-
-agents:
-  crystal_structure_agent:
-    goal: "根据需要，利用工具搜索、分析或操作晶体结构"
-    backstory: "经验丰富的晶体结构专家"
 ```
 
-#### MCP配置 (`configs/mcp_config.yaml`)
-配置VASP计算环境和参数：
+#### Required API Keys
 
-```yaml
-POTCAR_dir: /path/to/POTCARS/
-VASP_cmd: srun -N 1 mpirun -np 64 vasp_ncl
-work_dir: /path/to/work/directory
-db_path: /path/to/database.db
-mp_api_key: your-materials-project-api-key
+- **Materials Project API**: Required for structure search functionality
+- **LLM API**: Required for AI agent functionality (supports OpenAI-compatible APIs)
+- **Embedding API**: Required for memory and RAG functionality
 
-VASP_default_INCAR:
-  relaxation:
-    PREC: 'Accurate'
-    ISMEAR: 0
-    SIGMA: 0.03
-    EDIFF: 1e-6
-    IBRION: 1
-    EDIFFG: -0.005
-    NSW: 100
-```
 
-## 使用方法
+### Starting the Services
 
-### 1. 启动MCP服务
+#### 1. Start MCP Server
+
+Before starting the MCP server, you should setup the environment variable pointing to the POTCAR:
 
 ```bash
-# 启动MCP工具服务器（默认端口8933）
-vaspilot_mcp
-
-# 自定义配置和端口
-vaspilot_mcp --config configs/mcp_config.yaml --port 8933 --host 0.0.0.0
+export PMG_VASP_PSP_DIR=/path/to/your/POTCARS/
 ```
 
-### 2. 启动CrewAI服务
+Then, start the MCP server which provides tools for VASP calculations:
 
 ```bash
-# 启动CrewAI Web服务器（默认端口51293）
-vaspilot_server
-
-# 自定义配置和端口
-vaspilot_server --config configs/crew_config.yaml --port 51293 --host 0.0.0.0
+vaspilot_mcp --config /path/to/configs/mcp_config.yaml --port 8933
 ```
 
-### 3. Web界面使用
-
-访问 `http://localhost:51293` 打开Web界面，可以：
-- 提交VASP计算任务
-- 监控计算进度
-- 查看和下载结果
-- 可视化分析数据
-
-### 4. 支持的计算类型
-
-#### 结构优化
-```python
-# 自动结构优化
-"对TiO2进行结构优化计算"
+Or equivalently, use the provided script:
+```bash
+cd examples/1.Basic/mcp/
+# Edit start_mcp_server.sh with your paths
+./start_mcp_server.sh
 ```
 
-#### 能带计算
-```python
-# SCF + NSCF能带计算
-"计算MoS2的能带结构"
+#### 2. Start CrewAI Server
+
+Start the main CrewAI server with web interface:
+
+```bash
+vaspilot_server --config /path/to/configs/crew_config.yaml --port 51293 --work-dir /path/to/work/directory --allow-path /path/to/project/
 ```
 
-#### 材料搜索
-```python
-# Materials Project搜索
-"搜索带隙在1-3eV之间的钙钛矿材料"
+Or use the provided script:
+```bash
+cd examples/1.Basic/crew_server/
+# Edit start_crew_server.sh with your paths
+./start_crew_server.sh
 ```
 
-## 命令行参数
+### Accessing the Web Interface
 
-### vaspilot_mcp 参数
-- `--config`: MCP配置文件路径（默认：configs/mcp_config.yaml）
-- `--port`: 服务器端口（默认：8933）
-- `--host`: 服务器地址（默认：0.0.0.0）
-- `--work-dir`: 工作目录（默认：当前目录）
-- `--debug`: 开启调试模式
-
-### vaspilot_server 参数
-- `--config`: CrewAI配置文件路径（默认：configs/crew_config.yaml）
-- `--host`: 服务器地址（默认：0.0.0.0）
-- `--port`: 服务器端口（默认：51293）
-- `--work-dir`: 工作目录（默认：当前目录）
-- `--allow-path`: 允许访问的目录路径
-- `--debug`: 开启调试模式
-
-## 开发和扩展
-
-### 项目结构
+Once both servers are running, access the web interface at:
 ```
-src/vaspilot/
-├── scripts/          # 启动脚本
-├── server/           # Web服务器
-│   └── flask_server/ # Flask实现
-├── tools/            # 工具集合
-│   └── mcp/         # MCP工具实现
-├── crew/            # CrewAI代理定义
-└── listener/        # 事件监听器
+http://localhost:51293
 ```
 
-### 添加新工具
+From the web interface, you can:
+- Submit new calculation tasks
+- Monitor running calculations
+- View calculation history
+- Download results and analysis reports
 
-1. 在 `src/vaspilot/tools/mcp/` 下创建新的工具模块
-2. 在MCP服务器中注册新工具
-3. 更新配置文件中的工具列表
+## Example Prompts
 
-### 自定义代理
+### Band structure and Density of States (DOS) calculations
 
-1. 在 `configs/crew_config.yaml` 中定义新代理
-2. 配置代理的目标、背景和使用的LLM
-3. 重启服务器应用更改
+**Example Prompt**: Calculate the band structure of 2H phase MoS2. Use IVDW=11 in relaxation.
 
-## 故障排除
+**Workflow and Results**: 
+![simple mission](figs/Fig_2.png)
 
-### 常见问题
+### Other Missions:
 
-1. **MCP服务连接失败**
-   - 检查MCP服务器是否已启动
-   - 确认端口配置正确
-   - 检查防火墙设置
+1. **ENCUT Convergence Test**: Use dierent ENCUT (from 300 to 500) to calculate the total energy of 2H phase MoS2.
 
-2. **VASP计算失败**
-   - 检查POTCAR路径配置
-   - 确认VASP命令可执行
-   - 检查HPC环境设置
+2. Calculate and compare the c lattice constant of 2H MoS2
+with 12.294 Å (experiment value) using dierent vdW
+corrections.
+The settings of dierent vdW functionals are listed below:
+.....
+Plot an intuitve gure as result.
 
-3. **LLM连接问题**
-   - 验证API密钥和端点URL
-   - 检查网络连接
-   - 确认模型名称正确
+3. **Band Gap Comparison**: Calculate and compare the bandgap of MoS2, MoSe2, WS2 and WSe2. Plot an intuitive gure as result.
 
-### 调试技巧
+**Results**:
+![complex missions](figs/Fig_3.png)
 
-1. 使用 `--debug` 参数启动服务器
-2. 查看日志文件了解详细错误信息
-3. 检查数据库中的任务状态
-4. 验证配置文件格式
+## License
 
-## 依赖项
+This project is licensed under the LGPL v2.1. See the [LICENSE](LICENSE) file for details.
 
-主要依赖包：
-- `crewai>=0.102.0` - 智能代理框架
-- `fastmcp>=2.10.6` - MCP协议实现
-- `pymatgen>=2025.0.0` - 材料科学工具
-- `ase>=3.22.0` - 原子结构环境
-- `flask` - Web框架
-- `numpy`, `pandas`, `matplotlib` - 数据分析和可视化
+## Authors
 
-## 许可证
+- **Jiaxuan Liu** - liujiaxuan23@mails.ucas.ac.cn
+- **Quansheng Wu** - quansheng.wu@iphy.ac.cn
 
-MIT License
+## Contributing
 
-## 贡献
+Contributions are welcome! Please feel free to submit issues and pull requests.
 
-欢迎提交Issue和Pull Request来改进这个项目！
+## Citation
 
-## 致谢
+If you find VASPilot helpful, you are welcome to cite this article:
 
-- [CrewAI](https://github.com/joaomdmoura/crewAI) - 智能代理框架
-- [Pymatgen](https://pymatgen.org/) - 材料科学计算工具
-- [Materials Project](https://materialsproject.org/) - 材料数据库 
+```bibtex
+@misc{liu2025vaspilot,
+      title={VASPilot: MCP-Facilitated Multi-Agent Intelligence for Autonomous VASP Simulations}, 
+      author={Jiaxuan Liu and Tiannian Zhu and Caiyuan Ye and Zhong Fang and Hongming Weng and Quansheng Wu},
+      year={2025},
+      eprint={2508.07035},
+      archivePrefix={arXiv},
+      primaryClass={cond-mat.mtrl-sci},
+      url={https://arxiv.org/abs/2508.07035}, 
+}
+```
+
+## Relevant Links
+
+### CrewAI
+  - [Website](https://www.crewai.com/)
+  - [Github Repository](https://github.com/crewAIInc/crewAI)
+  - [Document](https://docs.crewai.com/en/introduction)
+
+### MCP
+  - [Github Repositories](https://github.com/modelcontextprotocol)
+  - [Document](https://modelcontextprotocol.io/docs/getting-started/intro)
+  - [FastMCP](https://github.com/jlowin/fastmcp)
+
+### Flask
+  - [Gihub Repository](https://github.com/pallets/flask)
+  - [Website](https://flask.palletsprojects.com/en/stable/)
+
+### Pymatgen
+  - [Github Repository](https://github.com/materialsproject/pymatgen)
+  - [Website](https://pymatgen.org/)
