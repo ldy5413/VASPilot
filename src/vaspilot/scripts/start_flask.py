@@ -4,7 +4,7 @@ import os
 import yaml
 
 from ..server.flask_server.flask_server import FlaskCrewServer
-def start_crew():
+def start_flask():
     """主函数 - 命令行启动入口"""
     current_dir = Path(__file__).parent
     project_root = current_dir.parent.parent.parent        # 项目根目录
@@ -57,4 +57,4 @@ def start_crew():
 
 
 if __name__ == "__main__":
-    start_crew()
+    start_flask()

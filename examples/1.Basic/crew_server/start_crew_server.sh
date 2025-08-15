@@ -2,8 +2,13 @@
 
 # start vaspilot_server in background
 
-nohup vaspilot_server --config "your-path-to-this-example/configs/crew_config.yaml" \
+nohup vaspilot_quart --config "your-path-to-this-example/configs/crew_config.yaml" \
     --port 51293 --work-dir "your-path-to-this-example/crew_server/work" --allow-path "your-path-to-this-example/" > server.log 2>&1 &
+
+# a legacy flask server:
+# nohup vaspilot_flask --config "your-path-to-this-example/configs/crew_config.yaml" \
+#    --port 51293 --work-dir "your-path-to-this-example/crew_server/work" --allow-path "your-path-to-this-example/" > server.log 2>&1 &
+
 
 # get PID for server process
 SERVER_PID=$!

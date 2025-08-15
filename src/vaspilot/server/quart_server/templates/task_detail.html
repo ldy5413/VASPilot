@@ -1,0 +1,2362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    <!-- JSMol for crystal structure visualization -->
+    <script src="https://chemapps.stolaf.edu/jmol/jsmol/JSmol.min.js"></script>
+    <!-- Mermaid for flowcharts -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+        /* 基础字体大小设置 */
+        body { font-size: 16px; }
+        p, .card-text, .text-muted, small { font-size: 1.1em; }
+        .lead { font-size: 1.3em; }
+        h1, h2, h3, h4, h5, h6 { font-size: 1.2em; }
+        
+        .sidebar { height: 100vh; overflow-y: auto; border-right: 1px solid #dee2e6; }
+        .main-content { height: 100vh; overflow-y: auto; }
+        .task-card { cursor: pointer; transition: all 0.2s; }
+        .task-card:hover { background-color: #f8f9fa; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .task-card.active { background-color: #e3f2fd; border-left: 4px solid #1976d2; }
+        .status-badge { font-size: 0.9em; }
+        .log-entry { font-family: 'Courier New', monospace; font-size: 1em; padding: 8px; margin: 2px 0; border-radius: 4px; background-color: #f8f9fa; border-left: 3px solid #6c757d; }
+        .log-entry.info { border-left-color: #17a2b8; }
+        .log-entry.warning { border-left-color: #ffc107; }
+        .log-entry.error { border-left-color: #dc3545; }
+        .agent-activity { padding: 12px; margin: 5px 0; border-radius: 6px; border: 1px solid #ddd; font-size: 1.05em; }
+        .agent-input { background-color: #e8f5e8; border-left: 4px solid #28a745; }
+        .agent-output { background-color: #fff3cd; border-left: 4px solid #ffc107; }
+        .tool-activity { padding: 12px; margin: 5px 0; border-radius: 6px; border: 1px solid #ddd; font-family: 'Courier New', monospace; font-size: 0.95em; }
+        .tool-input { background-color: #f8d7da; border-left: 4px solid #dc3545; }
+        .tool-output { background-color: #d1ecf1; border-left: 4px solid #17a2b8; }
+        pre { white-space: pre-wrap; word-wrap: break-word; font-size: 1em; }
+        .history-item.active { background-color: #e3f2fd; }
+        
+        /* 自动刷新提示 */
+        .refresh-indicator { 
+            position: fixed; 
+            top: 10px; 
+            right: 10px; 
+            background: rgba(0,0,0,0.7); 
+            color: white; 
+            padding: 5px 10px; 
+            border-radius: 15px; 
+            font-size: 0.8em; 
+            display: none; 
+            z-index: 1000; 
+        }
+        .refresh-indicator.active { display: block; }
+        
+        /* Markdown内容样式 */
+        .markdown-content { 
+            font-size: 1.05em; 
+            line-height: 1.6; 
+        }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 { 
+            margin-top: 1em; 
+            margin-bottom: 0.5em; 
+        }
+        .markdown-content p { 
+            margin-bottom: 0.8em; 
+        }
+        .markdown-content code { 
+            background-color: #f8f9fa; 
+            padding: 2px 4px; 
+            border-radius: 3px; 
+            font-size: 0.9em; 
+        }
+        .markdown-content pre { 
+            background-color: #f8f9fa; 
+            padding: 1em; 
+            border-radius: 5px; 
+            overflow-x: auto; 
+        }
+        .markdown-content blockquote { 
+            border-left: 4px solid #dee2e6; 
+            padding-left: 1em; 
+            margin: 1em 0; 
+            color: #6c757d; 
+        }
+        
+
+        /* 图片显示样式 */
+        .content-image { 
+            max-width: 100%; 
+            height: auto; 
+            margin: 1em 0; 
+            border: 1px solid #dee2e6; 
+            border-radius: 5px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        
+        /* JSMol容器样式 */
+        .jsmol-container { 
+            margin: 1em 0; 
+            text-align: center; 
+            border: 1px solid #dee2e6; 
+            border-radius: 5px; 
+            padding: 10px; 
+            background-color: #f8f9fa; 
+        }
+        
+        /* 文件路径高亮 */
+        .file-path { 
+            background-color: #e3f2fd; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-family: monospace; 
+            font-size: 0.9em; 
+        }
+        
+        /* 文件链接容器 */
+        .file-link-container {
+            display: inline-flex;
+            align-items: center;
+            margin: 2px 0;
+            padding: 4px 8px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        
+        /* 文件显示区域样式 */
+        #file-display-area .content-image { 
+            max-width: 100%; 
+            max-height: 500px;
+            height: auto; 
+            margin: 1em auto;
+            display: block;
+            border: 1px solid #dee2e6; 
+            border-radius: 5px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        
+        #file-display-area .jsmol-container { 
+            text-align: center; 
+            padding: 20px; 
+        }
+        
+        /* 流程图样式 */
+        .workflow-chart { 
+            margin: 1em 0; 
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .workflow-chart .mermaid { 
+            text-align: center; 
+        }
+        
+        /* 活动历史简化样式 */
+        .history-item-simple {
+            padding: 8px 12px;
+            margin: 2px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .history-item-simple:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .history-item-simple.active {
+            background-color: #e3f2fd;
+            border-left: 4px solid #1976d2;
+        }
+        
+        .activity-badge {
+            font-size: 0.8em;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        /* 通知弹窗样式 */
+        .notification-popup {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: none;
+            border-radius: 8px;
+        }
+        
+        .notification-popup .btn-close {
+            padding: 0.25rem;
+            font-size: 0.75rem;
+        }
+    </style>
+  </head>
+<body>
+    <!-- 自动刷新提示 -->
+    <div class="refresh-indicator" id="refresh-indicator">🔄 Refreshing...</div>
+    
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 左侧边栏 -->
+            <div class="col-md-3 sidebar bg-light p-3">
+                <h4 class="mb-3">{{ title }}</h4>
+                <div class="mb-3">
+                    <a href="/" class="btn btn-outline-primary btn-sm">← Back to home</a>
+                </div>
+                
+                <!-- 最近任务 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Recent missions</h6>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                        {% for recent_task in recent_tasks %}
+                        <div class="task-card card mb-2 {% if recent_task.conversation_id == task.conversation_id %}active{% endif %}" 
+                             onclick="window.location.href='/task/{{ recent_task.conversation_id }}'">
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="small fw-bold">{{ recent_task.task_description[:50] }}{% if recent_task.task_description|length > 50 %}...{% endif %}</div>
+                                        <small class="text-muted">{{ recent_task.created_at }}</small>
+                                    </div>
+                                    <span class="badge status-badge 
+                                        {% if recent_task.status == 'completed' %}bg-success
+                                        {% elif recent_task.status == 'running' %}bg-primary
+                                        {% elif recent_task.status == 'failed' %}bg-danger
+                                        {% elif recent_task.status == 'cancelled' %}bg-warning
+                                        {% elif recent_task.status == 'queued' %}bg-secondary
+                                        {% else %}bg-secondary
+                                        {% endif %}">
+                                        {% if recent_task.status == 'completed' %}Completed
+                                        {% elif recent_task.status == 'running' %}Running
+                                        {% elif recent_task.status == 'failed' %}Failed
+                                        {% elif recent_task.status == 'cancelled' %}Cancelled
+                                        {% elif recent_task.status == 'queued' %}Queued
+                                        {% else %}Waiting
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 主内容区 -->
+            <div class="col-md-9 main-content p-3">
+                <!-- 任务基本信息 -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Task details</h5>
+                            <div class="d-flex align-items-center">
+                                <span class="badge main-task-status-badge
+                                    {% if task.status == 'completed' %}bg-success
+                                    {% elif task.status == 'running' %}bg-primary
+                                    {% elif task.status == 'failed' %}bg-danger
+                                    {% elif task.status == 'cancelled' %}bg-warning text-dark
+                                    {% elif task.status == 'queued' %}bg-secondary
+                                    {% else %}bg-secondary
+                                    {% endif %}">
+                                    {% if task.status == 'completed' %}Completed
+                                    {% elif task.status == 'running' %}Running
+                                    {% elif task.status == 'failed' %}Failed
+                                    {% elif task.status == 'cancelled' %}Cancelled
+                                    {% elif task.status == 'queued' %}Queued
+                                    {% else %}等待中
+                                    {% endif %}
+                                </span>
+                                <!-- 停止任务按钮 -->
+                                {% if task.status in ['running', 'pending', 'queued'] %}
+                                <button class="btn btn-danger btn-sm ms-2" id="stop-task-btn" onclick="stopTask()">
+                                    <i class="fas fa-stop"></i> 停止任务
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-title">{{ task.task_description }}</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <strong>Conversation ID:</strong> {{ task.conversation_id }}<br>
+                                    <strong>Creation time:</strong> {{ task.created_at }}<br>
+                                    {% if task.started_at %}
+                                    <strong>Start time:</strong> {{ task.started_at }}<br>
+                                    {% endif %}
+                                    {% if task.completed_at %}
+                                    <strong>Completion time:</strong> {{ task.completed_at }}<br>
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                {% if task.error_message %}
+                                <div class="alert alert-danger" role="alert">
+                                    <strong>Error message:</strong> {{ task.error_message }}
+                                </div>
+                                {% endif %}
+                                {% if task.result %}
+                                <div class="alert alert-success" role="alert">
+                                    <strong>Execution result:</strong> Task completed
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 工作流程图 -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-project-diagram"></i> Workflow
+                            <!-- <small class="text-muted ms-2">💡 点击流程图中的节点可跳转到详情</small> -->
+                        </h6>
+                    </div>
+                    <div class="card-body workflow-chart">
+                        <div id="workflow-mermaid" class="mermaid">
+                            <!-- 流程图将在这里动态生成 -->
+                        </div>
+                        <div class="text-center mt-3" id="workflow-loading" style="display: none;">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="sr-only">生成流程图中...</span>
+                            </div>
+                            <small class="text-muted ms-2">正在生成流程图...</small>
+                        </div>
+                        <div class="text-center mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                <span style="color: #1976d2; background: #e3f2fd; padding: 2px 8px; border-radius: 8px; border: 2px solid #1976d2;">Agent</span> Agent &nbsp;
+                                <span style="color: #f57c00; background: #fff3e0; padding: 2px 8px; border: 2px solid #f57c00;">Tool</span> Tool &nbsp;
+                                <span style="color: #4caf50; background: #e8f5e8; padding: 2px 8px; border-radius: 50%; border: 2px solid #4caf50;">●</span> start/end
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- 左侧：历史记录列表 -->
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Event history</h6>
+                            </div>
+                            <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+                                <div class="list-group list-group-flush">
+                                    {% for log in logs %}
+                                    <div class="list-group-item list-group-item-action history-item" 
+                                         data-type="{{ log.type }}" 
+                                         data-role-name="{{ log.role_name or '' }}"
+                                         data-content="{{ log.content|escape }}"
+                                         data-timestamp="{{ log.timestamp }}"
+                                         data-log-index="{{ loop.index0 }}">
+                                        <div class="d-flex w-100 justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <span class="activity-badge 
+                                                    {% if log.type == 'system' %}bg-secondary text-white
+                                                    {% elif log.type == 'agent_input' %}bg-success text-white
+                                                    {% elif log.type == 'agent_output' %}bg-warning text-dark
+                                                    {% elif log.type == 'tool_input' %}bg-danger text-white
+                                                    {% elif log.type == 'tool_output' %}bg-info text-white
+                                                    {% endif %}">
+                                                                                        {% if log.type == 'agent_input' %}
+                                        <i class="fas fa-robot"></i> {% if log.role_name %}{{ log.role_name }} input{% else %}Agent input{% endif %}
+                                    {% elif log.type == 'agent_output' %}
+                                        <i class="fas fa-robot"></i> {% if log.role_name %}{{ log.role_name }} output{% else %}Agent output{% endif %}
+                                    {% elif log.type == 'tool_input' %}
+                                        <i class="fas fa-tools"></i> {% if log.role_name %}{{ log.role_name }} call{% else %}Tool call{% endif %}
+                                    {% elif log.type == 'tool_output' %}
+                                        <i class="fas fa-tools"></i> {% if log.role_name %}{{ log.role_name }} result{% else %}Tool result{% endif %}
+                                    {% else %}
+                                        <i class="fas fa-info-circle"></i> {{ log.type_name }}
+                                    {% endif %}
+                                                </span>
+                                            </div>
+                                            <small class="text-muted">{{ log.timestamp }}</small>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧：详情显示 -->
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0" id="detail-title">Select an item on the left to view details</h6>
+                            </div>
+                            <div class="card-body" id="detail-content">
+                                <div class="text-center text-muted">
+                                    <p>Click on the history record item on the left to view detailed content.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 文件显示区域 -->
+                        <div class="card mt-3" id="file-display-area" style="display: none;">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0" id="file-display-title">File preview</h6>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="closeFileDisplay()">
+                                    <i class="fas fa-times"></i> Close
+                                </button>
+                            </div>
+                            <div class="card-body" id="file-display-content">
+                                <!-- 动态内容区域 -->
+                            </div>
+                        </div>
+                        
+                        {% if task.result %}
+                        <!-- 隐藏的静态数据传递元素 -->
+                        <div data-static-result="{{ task.result|escape }}" style="display: none;"></div>
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">Final result</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="markdown-content" id="final-result-content">
+                                    <!-- 内容将通过JavaScript动态渲染 -->
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    <script>
+    let currentTaskData = null;
+    let refreshInterval = null;
+    let lastUpdateTime = 0;
+    let isUpdating = false;
+    
+    // 页面加载时清理任何遗留的定时器
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+    
+    // 查找并处理文件路径
+    function processFilePaths(content) {
+        // 不再因为包含 file-link-container 而整体跳过，避免遗漏后续新路径
+        let processedContent = content;
+        
+        // 专门处理已经在<code>标签内的文件路径
+        function processCodeElements(content) {
+            const filePatterns = [
+                { ext: 'png', buttonClass: 'primary', iconClass: 'image', iconText: 'View image', showFunction: 'showImageFile' },
+                { ext: 'vasp', buttonClass: 'success', iconClass: 'cube', iconText: 'View structure', showFunction: 'showVaspFile' },
+                { ext: 'xyz', buttonClass: 'success', iconClass: 'cube', iconText: 'View structure', showFunction: 'showVaspFile' },
+                { ext: 'cif', buttonClass: 'success', iconClass: 'cube', iconText: 'View structure', showFunction: 'showVaspFile' }
+            ];
+            
+            let processedContent = content;
+            
+            // 对每种文件类型进行处理
+            filePatterns.forEach(pattern => {
+                // 简单但可靠的方法：查找独立的<code>标签
+                const codePattern = new RegExp(
+                    '<code>(\/[^<]*\\.' + pattern.ext + ')</code>',
+                    'gi'
+                );
+                
+                processedContent = processedContent.replace(codePattern, function(match, filePath, offset, string) {
+                    // 检查周围的上下文，确保不是已经处理过的
+                    const beforeMatch = string.substring(Math.max(0, offset - 100), offset);
+                    const afterMatch = string.substring(offset + match.length, offset + match.length + 100);
+                    
+                    // 如果前面有file-link-container或file-path，说明已经处理过了
+                    if (beforeMatch.includes('file-link-container') || beforeMatch.includes('file-path')) {
+                        return match;
+                    }
+                    
+                    // 如果后面紧跟着button标签，说明已经处理过了
+                    if (afterMatch.trim().startsWith('<button')) {
+                        return match;
+                    }
+                    
+                    const cleanPath = filePath.trim();
+                    
+                    // 检查路径是否合理
+                    if (cleanPath.includes('&lt;') || cleanPath.includes('&gt;') || 
+                        cleanPath.length < 5 || cleanPath.includes('<') || cleanPath.includes('>')) {
+                        return match; // 跳过不合理的路径
+                    }
+                    
+                    const encodedPath = encodeURIComponent(cleanPath);
+                    const buttonId = pattern.ext + '_btn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    
+                    console.log('处理<code>内的文件路径:', cleanPath);
+                    
+                    return '<span class="file-link-container">' +
+                            '<code class="file-path">' + cleanPath + '</code>' +
+                            '<button class="btn btn-sm btn-outline-' + pattern.buttonClass + ' ms-2" id="' + buttonId + '" onclick="' + pattern.showFunction + '(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
+                                '<i class="fas fa-' + pattern.iconClass + '"></i> ' + pattern.iconText +
+                            '</button>' +
+                        '</span>';
+                });
+            });
+            
+            return processedContent;
+        }
+        
+        // 首先处理<code>元素内的文件路径
+        processedContent = processCodeElements(processedContent);
+        
+        // 安全的文件路径处理函数
+        function processFilePathsSafely(content, fileExtension, buttonClass, iconClass, iconText, showFunction) {
+            // 创建一个临时容器来解析HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // 获取所有文本节点（不在HTML标签内的纯文本）
+            const walker = document.createTreeWalker(
+                tempDiv,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+            
+            const textNodes = [];
+            let node;
+            while (node = walker.nextNode()) {
+                textNodes.push(node);
+            }
+            
+            // 处理每个文本节点
+            textNodes.forEach(textNode => {
+                const text = textNode.textContent;
+                const pattern = new RegExp('(/[^\\s\'\"<>]*\\.' + fileExtension + ')\\b', 'gi');
+                const matches = [...text.matchAll(pattern)];
+                
+                if (matches.length > 0) {
+                    // 检查父元素是否已经是code、pre等标签
+                    const parent = textNode.parentElement;
+                    const isInCodeElement = parent && (
+                        parent.tagName.toLowerCase() === 'code' ||
+                        parent.tagName.toLowerCase() === 'pre' ||
+                        parent.closest('code') ||
+                        parent.closest('pre') ||
+                        parent.classList.contains('file-path') ||
+                        parent.classList.contains('file-link-container')
+                    );
+                    
+                    if (!isInCodeElement) {
+                        // 替换文本节点内容
+                        let newHTML = text;
+                        matches.reverse().forEach(match => { // 倒序处理避免位置偏移
+                            const filePath = match[1].trim();
+                            const encodedPath = encodeURIComponent(filePath);
+                            const buttonId = fileExtension + '_btn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                            
+                            const buttonHtml = 
+                                '<span class="file-link-container">' +
+                                    '<code class="file-path">' + filePath + '</code>' +
+                                    '<button class="btn btn-sm btn-outline-' + buttonClass + ' ms-2" id="' + buttonId + '" onclick="' + showFunction + '(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
+                                        '<i class="fas fa-' + iconClass + '"></i> ' + iconText +
+                                    '</button>' +
+                                '</span>';
+                            
+                            const startIndex = match.index;
+                            const endIndex = startIndex + match[0].length;
+                            newHTML = newHTML.substring(0, startIndex) + buttonHtml + newHTML.substring(endIndex);
+                        });
+                        
+                        // 创建新的HTML节点来替换文本节点
+                        if (newHTML !== text) {
+                            const wrapper = document.createElement('span');
+                            wrapper.innerHTML = newHTML;
+                            textNode.parentNode.replaceChild(wrapper, textNode);
+                        }
+                    } else {
+                        console.log('跳过已在HTML标签内的文件路径:', text.trim());
+                    }
+                }
+            });
+            
+            return tempDiv.innerHTML;
+        }
+        
+        // 处理.png图片文件
+        try {
+            processedContent = processFilePathsSafely(processedContent, 'png', 'primary', 'image', 'Show image', 'showImageFile');
+        } catch (error) {
+            console.warn('Error processing PNG file path:', error);
+            // 回退到简单的正则处理，但增加安全检查
+            const imagePattern = /(?<!<[^>]*?)(\/[^\s'"<>]*\.png)\b(?![^<]*?>)/gi;
+            processedContent = processedContent.replace(imagePattern, function(match, filePath, offset, string) {
+                // 检查是否在HTML标签内
+                const beforeMatch = string.substring(0, offset);
+                const afterMatch = string.substring(offset + match.length);
+                const lastOpenTag = beforeMatch.lastIndexOf('<');
+                const lastCloseTag = beforeMatch.lastIndexOf('>');
+                const nextCloseTag = afterMatch.indexOf('>');
+                
+                // 如果在HTML标签内则跳过
+                if (lastOpenTag > lastCloseTag && nextCloseTag !== -1) {
+                    return match;
+                }
+                
+                const cleanPath = filePath.trim();
+                const encodedPath = encodeURIComponent(cleanPath);
+                const buttonId = 'img_btn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                return '<span class="file-link-container">' +
+                        '<code class="file-path">' + cleanPath + '</code>' +
+                        '<button class="btn btn-sm btn-outline-primary ms-2" id="' + buttonId + '" onclick="showImageFile(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
+                            '<i class="fas fa-image"></i> View image' +
+                        '</button>' +
+                    '</span>';
+            });
+        }
+        
+        // 处理.vasp晶体结构文件
+        try {
+            processedContent = processFilePathsSafely(processedContent, 'vasp', 'success', 'cube', 'Show structure', 'showVaspFile');
+        } catch (error) {
+            console.warn('Error processing VASP file path:', error);
+            // 回退到简单的正则处理，但增加安全检查
+            const vaspPattern = /(?<!<[^>]*?)(\/[^\s'"<>]*\.vasp)\b(?![^<]*?>)/gi;
+            processedContent = processedContent.replace(vaspPattern, function(match, filePath, offset, string) {
+                // 检查是否在HTML标签内
+                const beforeMatch = string.substring(0, offset);
+                const afterMatch = string.substring(offset + match.length);
+                const lastOpenTag = beforeMatch.lastIndexOf('<');
+                const lastCloseTag = beforeMatch.lastIndexOf('>');
+                const nextCloseTag = afterMatch.indexOf('>');
+                
+                // 如果在HTML标签内则跳过
+                if (lastOpenTag > lastCloseTag && nextCloseTag !== -1) {
+                    return match;
+                }
+                
+                const cleanPath = filePath.trim();
+                const encodedPath = encodeURIComponent(cleanPath);
+                const buttonId = 'vasp_btn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                return '<span class="file-link-container">' +
+                        '<code class="file-path">' + cleanPath + '</code>' +
+                        '<button class="btn btn-sm btn-outline-success ms-2" id="' + buttonId + '" onclick="showVaspFile(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
+                            '<i class="fas fa-cube"></i> View structure' +
+                        '</button>' +
+                    '</span>';
+            });
+        }
+        
+        // 处理.xyz晶体结构文件
+        try {
+            processedContent = processFilePathsSafely(processedContent, 'xyz', 'success', 'cube', '查看结构', 'showVaspFile');
+        } catch (error) {
+            console.warn('处理XYZ文件路径时出错:', error);
+            // 回退到简单的正则处理
+            const xyzPattern = /(?<!<[^>]*?)(\/[^\s'"<>]*\.xyz)\b(?![^<]*?>)/gi;
+            processedContent = processedContent.replace(xyzPattern, function(match, filePath, offset, string) {
+                const beforeMatch = string.substring(0, offset);
+                const afterMatch = string.substring(offset + match.length);
+                const lastOpenTag = beforeMatch.lastIndexOf('<');
+                const lastCloseTag = beforeMatch.lastIndexOf('>');
+                const nextCloseTag = afterMatch.indexOf('>');
+                
+                if (lastOpenTag > lastCloseTag && nextCloseTag !== -1) {
+                    return match;
+                }
+                
+                const cleanPath = filePath.trim();
+                const encodedPath = encodeURIComponent(cleanPath);
+                const buttonId = 'xyz_btn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                return '<span class="file-link-container">' +
+                        '<code class="file-path">' + cleanPath + '</code>' +
+                        '<button class="btn btn-sm btn-outline-success ms-2" id="' + buttonId + '" onclick="showVaspFile(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
+                            '<i class="fas fa-cube"></i> View structure' +
+                        '</button>' +
+                    '</span>';
+            });
+        }
+        
+        // 处理.cif晶体结构文件
+        try {
+            processedContent = processFilePathsSafely(processedContent, 'cif', 'success', 'cube', '查看结构', 'showVaspFile');
+        } catch (error) {
+            console.warn('处理CIF文件路径时出错:', error);
+            // 回退到简单的正则处理
+            const cifPattern = /(?<!<[^>]*?)(\/[^\s'"<>]*\.cif)\b(?![^<]*?>)/gi;
+            processedContent = processedContent.replace(cifPattern, function(match, filePath, offset, string) {
+                const beforeMatch = string.substring(0, offset);
+                const afterMatch = string.substring(offset + match.length);
+                const lastOpenTag = beforeMatch.lastIndexOf('<');
+                const lastCloseTag = beforeMatch.lastIndexOf('>');
+                const nextCloseTag = afterMatch.indexOf('>');
+                
+                if (lastOpenTag > lastCloseTag && nextCloseTag !== -1) {
+                    return match;
+                }
+                
+                const cleanPath = filePath.trim();
+                const encodedPath = encodeURIComponent(cleanPath);
+                const buttonId = 'cif_btn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                return '<span class="file-link-container">' +
+                        '<code class="file-path">' + cleanPath + '</code>' +
+                        '<button class="btn btn-sm btn-outline-success ms-2" id="' + buttonId + '" onclick="showVaspFile(decodeURIComponent(\'' + encodedPath + '\'), \'' + buttonId + '\')">' +
+                            '<i class="fas fa-cube"></i> View structure' +
+                        '</button>' +
+                    '</span>';
+            });
+        }
+        
+        return processedContent;
+    }
+    
+    // 渲染内容
+    function renderContent(content, type) {
+        if (type === 'tool_input' || type === 'tool_output') {
+            const processedContent = processFilePaths(content);
+            return '<pre class="mb-0">' + processedContent + '</pre>';
+        } else if (type === 'agent_input' || type === 'agent_output') {
+            try {
+                const rendered = marked.parse(content);
+                const processedContent = processFilePaths(rendered);
+                return '<div class="markdown-content">' + processedContent + '</div>';
+            } catch (e) {
+                const processedContent = processFilePaths(content);
+                return '<pre class="mb-0">' + processedContent + '</pre>';
+            }
+        } else {
+            return '<pre class="mb-0">' + content + '</pre>';
+        }
+    }
+    
+    // 显示刷新指示器
+    function showRefreshIndicator() {
+        const indicator = document.getElementById('refresh-indicator');
+        if (indicator) {
+            indicator.classList.add('active');
+            setTimeout(() => indicator.classList.remove('active'), 1000);
+        }
+    }
+    
+    // 更新任务状态徽章（只更新主任务状态，不影响侧边栏）
+    function updateTaskStatus(status) {
+        // 只更新主任务的状态标签，避免影响侧边栏的其他任务
+        const mainTaskBadge = document.querySelector('.main-task-status-badge');
+        if (!mainTaskBadge) return;
+        
+        // 检查当前状态是否已经正确，避免不必要的更新
+        let currentStatus = '';
+        if (mainTaskBadge.textContent.trim() === 'Completed') currentStatus = 'completed';
+        else if (mainTaskBadge.textContent.trim() === 'Running') currentStatus = 'running';
+        else if (mainTaskBadge.textContent.trim() === 'Failed') currentStatus = 'failed';
+        else if (mainTaskBadge.textContent.trim() === 'Cancelled') currentStatus = 'cancelled';
+        else if (mainTaskBadge.textContent.trim() === 'Queued') currentStatus = 'queued';
+        else currentStatus = 'pending';
+        
+        // 只有当状态真的发生变化时才更新
+        if (currentStatus !== status) {
+            console.log('Main task status updated: ' + currentStatus + ' → ' + status);
+            mainTaskBadge.className = 'badge main-task-status-badge';
+            if (status === 'completed') {
+                mainTaskBadge.className += ' bg-success';
+                mainTaskBadge.textContent = 'Completed';
+            } else if (status === 'running') {
+                mainTaskBadge.className += ' bg-primary';
+                mainTaskBadge.textContent = 'Running';
+            } else if (status === 'failed') {
+                mainTaskBadge.className += ' bg-danger';
+                mainTaskBadge.textContent = 'Failed';
+            } else if (status === 'cancelled') {
+                mainTaskBadge.className += ' bg-warning text-dark';
+                mainTaskBadge.textContent = 'Cancelled';
+            } else if (status === 'queued') {
+                mainTaskBadge.className += ' bg-secondary';
+                mainTaskBadge.textContent = 'Queued';
+            } else {
+                mainTaskBadge.className += ' bg-secondary';
+                mainTaskBadge.textContent = 'Waiting';
+            }
+            
+            // 根据任务状态显示或隐藏停止按钮
+            updateStopButton(status);
+        }
+    }
+    
+    // 更新停止按钮显示状态
+    function updateStopButton(status) {
+        const stopBtn = document.getElementById('stop-task-btn');
+        if (stopBtn) {
+            if (status === 'running' || status === 'pending' || status === 'queued') {
+                stopBtn.style.display = 'inline-block';
+            } else {
+                stopBtn.style.display = 'none';
+            }
+        }
+    }
+    
+    // 停止任务函数
+    async function stopTask() {
+        const stopBtn = document.getElementById('stop-task-btn');
+        if (!stopBtn) return;
+        
+        // 确认对话框
+        if (!confirm('确定要停止当前任务吗？\n\n停止任务后将无法恢复，正在进行的计算也会被取消。')) {
+            return;
+        }
+        
+        try {
+            // 禁用按钮并显示加载状态
+            stopBtn.disabled = true;
+            const originalContent = stopBtn.innerHTML;
+            stopBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 停止中...';
+            
+            const taskId = getCurrentTaskId();
+            const response = await fetch('/api/task/' + taskId + '/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                // 停止成功
+                console.log('任务停止成功:', result);
+                
+                // 显示成功消息
+                showNotification('任务已停止', 'success');
+                
+                // 更新任务状态
+                updateTaskStatus('cancelled');
+                
+                // 停止自动刷新
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+                
+                // 获取最新数据以更新界面
+                setTimeout(() => {
+                    fetchLatestData(true);
+                }, 1000);
+                
+            } else {
+                // 停止失败
+                console.error('停止任务失败:', result);
+                showNotification(result.error || '停止任务失败', 'error');
+                
+                // 恢复按钮状态
+                stopBtn.disabled = false;
+                stopBtn.innerHTML = originalContent;
+            }
+            
+        } catch (error) {
+            console.error('停止任务时发生错误:', error);
+            showNotification('停止任务时发生错误: ' + error.message, 'error');
+            
+            // 恢复按钮状态
+            stopBtn.disabled = false;
+            stopBtn.innerHTML = originalContent;
+        }
+    }
+    
+    // 显示通知消息
+    function showNotification(message, type = 'info') {
+        // 创建通知元素
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} notification-popup`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        
+        notification.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+                <span>${message}</span>
+                <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // 显示动画
+        setTimeout(() => {
+            notification.style.opacity = '1';
+        }, 100);
+        
+        // 自动隐藏
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 5000);
+    }
+    
+    // 提取工具名称的辅助函数
+    function extractToolName(content) {
+        try {
+            const data = JSON.parse(content);
+            if (data.tool_name) return data.tool_name;
+            if (data.name) return data.name;
+            if (data.function && data.function.name) return data.function.name;
+            if (data.tool && data.tool.name) return data.tool.name;
+            if (data.method) return data.method;
+            if (data.action) return data.action;
+            
+            // 查找可能的名称字段
+            const keys = Object.keys(data);
+            const possibleNames = keys.filter(key => 
+                key.toLowerCase().includes('name') || 
+                key.toLowerCase().includes('tool') ||
+                key.toLowerCase().includes('method') ||
+                key.toLowerCase().includes('action')
+            );
+            if (possibleNames.length > 0) {
+                const value = data[possibleNames[0]];
+                if (typeof value === 'string' && value.trim() !== '') {
+                    return value.trim();
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+    
+    // 提取Agent名称的辅助函数
+    function extractAgentName(content) {
+        try {
+            const data = JSON.parse(content);
+            if (data.agent_name) return data.agent_name;
+            if (data.name) return data.name;
+            if (data.role) return data.role;
+            if (data.agent) return data.agent;
+        } catch (e) {}
+        return null;
+    }
+
+    // 更新历史记录列表
+    function updateHistoryList(logs) {
+        const historyContainer = document.querySelector('.list-group');
+        if (!historyContainer) return;
+        
+        // 防抖保护：避免短时间内重复更新
+        const now = Date.now();
+        if (isUpdating || (now - lastUpdateTime < 500)) {
+            console.log('⏭️ Skip history record update');
+            return;
+        }
+        
+        isUpdating = true;
+        lastUpdateTime = now;
+        
+        console.log('🔄 Start updating history record list, log number:', logs.length);
+        
+        try {
+            // 保存当前选中的项目
+            const activeItem = historyContainer.querySelector('.history-item.active');
+            const activeTimestamp = activeItem ? activeItem.dataset.timestamp : null;
+            
+            // 总是完全重建列表以避免重复显示问题
+            console.log('📝 Completely rebuild history record list');
+            historyContainer.innerHTML = '';
+            
+            // 重新创建所有历史记录项
+            logs.forEach((log, index) => {
+                const historyItem = createHistoryItem(log, index);
+                historyContainer.appendChild(historyItem);
+            });
+            
+            // 恢复选中状态
+            if (activeTimestamp) {
+                const newActiveItem = historyContainer.querySelector(`[data-timestamp="${activeTimestamp}"]`);
+                if (newActiveItem) {
+                    newActiveItem.classList.add('active');
+                }
+            }
+            
+            console.log('✅ History record list updated, total', logs.length, 'items');
+        } finally {
+            // 确保在任何情况下都会重置更新状态
+            setTimeout(() => {
+                isUpdating = false;
+            }, 100);
+        }
+    }
+    
+    // 创建历史记录项目
+    function createHistoryItem(log, index) {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'list-group-item list-group-item-action history-item';
+        historyItem.dataset.type = log.type;
+        historyItem.dataset.roleName = log.role_name || '';
+        historyItem.dataset.content = log.content;
+        historyItem.dataset.timestamp = log.timestamp;
+        if (typeof index === 'number') {
+            historyItem.dataset.logIndex = index;
+        }
+        
+        // 调试信息（已移除以减少控制台噪音）
+        
+        let badgeClass = 'bg-secondary text-white';
+        let badgeText = log.type_name;
+        let badgeIcon = 'fas fa-info-circle';
+        let specificName = '';
+        
+        if (log.type === 'system') {
+            badgeClass = 'bg-secondary text-white';
+            badgeIcon = 'fas fa-info-circle';
+            badgeText = log.type_name;
+        } else if (log.type === 'agent_input') {
+            badgeClass = 'bg-success text-white';
+            badgeIcon = 'fas fa-robot';
+            specificName = log.role_name;
+            badgeText = specificName ? specificName + ' input' : 'Agent input';
+        } else if (log.type === 'agent_output') {
+            badgeClass = 'bg-warning text-dark';
+            badgeIcon = 'fas fa-robot';
+            specificName = log.role_name;
+            badgeText = specificName ? specificName + ' output' : 'Agent output';
+        } else if (log.type === 'tool_input') {
+            badgeClass = 'bg-danger text-white';
+            badgeIcon = 'fas fa-tools';
+            specificName = log.role_name;
+            badgeText = specificName ? specificName + ' call' : 'Tool call';
+        } else if (log.type === 'tool_output') {
+            badgeClass = 'bg-info text-white';
+            badgeIcon = 'fas fa-tools';
+            specificName = log.role_name;
+            badgeText = specificName ? specificName + ' result' : 'Tool result';
+        }
+        
+        historyItem.innerHTML = 
+            '<div class="d-flex w-100 justify-content-between align-items-center">' +
+                '<div class="d-flex align-items-center">' +
+                    '<span class="activity-badge ' + badgeClass + '">' +
+                        '<i class="' + badgeIcon + '"></i> ' + badgeText +
+                    '</span>' +
+                '</div>' +
+                '<small class="text-muted">' + log.timestamp + '</small>' +
+            '</div>';
+        
+        return historyItem;
+    }
+    
+    // 生成工作流程图
+    async function generateWorkflowChart(logs) {
+        const workflowContainer = document.getElementById('workflow-mermaid');
+        const loadingIndicator = document.getElementById('workflow-loading');
+        
+        if (!workflowContainer || !logs || logs.length === 0) {
+            return;
+        }
+        
+        // 显示加载状态
+        loadingIndicator.style.display = 'block';
+        workflowContainer.innerHTML = '';
+        
+        try {
+            // 分析日志，提取Agent和Tool序列
+            const activities = [];
+            let currentAgent = null;
+            let agentTools = [];
+            let agentIndex = 0;
+            let toolIndex = 0;
+            
+            logs.forEach((log, index) => {
+                // 过滤掉manager相关的日志，这些通常是框架内部的管理器节点
+                const isManagerRelated = log.role_name && log.role_name.toLowerCase().includes('manager');
+                
+                if (isManagerRelated) {
+                    return; // 跳过manager相关的日志
+                }
+                
+                if (log.type === 'agent_input') {
+                    // 如果之前有Agent，先保存它
+                    if (currentAgent) {
+                        // 查找对应的agent_output
+                        const outputLog = logs.find((l, idx) => 
+                            idx > currentAgent.logIndex && 
+                            l.type === 'agent_output' && 
+                            l.role_name === currentAgent.originalName
+                        );
+                        
+                        activities.push({
+                            type: 'agent',
+                            id: 'agent' + (agentIndex++),
+                            name: currentAgent.name,
+                            tools: [...agentTools],
+                            timestamp: currentAgent.timestamp,
+                            logIndex: currentAgent.logIndex,
+                            outputTimestamp: outputLog ? outputLog.timestamp : currentAgent.timestamp,
+                            outputLogIndex: outputLog ? logs.indexOf(outputLog) : currentAgent.logIndex
+                        });
+                    }
+                    
+                    // 直接使用role_name字段
+                    let agentName = log.role_name || 'Agent-' + (agentIndex + 1);
+                    const originalName = log.role_name;
+                    
+                    // 调试信息（已移除）
+                    
+                    // 限制长度以避免流程图过宽
+                    if (agentName.length > 25) {
+                        agentName = agentName.substring(0, 22) + '...';
+                    }
+                    
+                    // 开始新的Agent活动
+                    currentAgent = {
+                        name: agentName,
+                        originalName: originalName,
+                        timestamp: log.timestamp,
+                        logIndex: index
+                    };
+                    agentTools = [];
+                    
+                } else if (log.type === 'tool_input' && currentAgent) {
+                    // 直接使用role_name字段
+                    let toolName = log.role_name || 'Tool-' + (toolIndex + 1);
+                    
+                    // 调试信息（已移除）
+                    
+                    // 限制长度以避免流程图过宽
+                    if (toolName.length > 20) {
+                        toolName = toolName.substring(0, 17) + '...';
+                    }
+                    
+                    agentTools.push({
+                        id: 'tool' + (toolIndex++),
+                        name: toolName,
+                        timestamp: log.timestamp,
+                        logIndex: index
+                    });
+                }
+            });
+            
+            // 保存最后一个Agent
+            if (currentAgent) {
+                // 查找对应的agent_output
+                const outputLog = logs.find((l, idx) => 
+                    idx > currentAgent.logIndex && 
+                    l.type === 'agent_output' && 
+                    l.role_name === currentAgent.originalName
+                );
+                
+                activities.push({
+                    type: 'agent',
+                    id: 'agent' + (agentIndex++),
+                    name: currentAgent.name,
+                    tools: [...agentTools],
+                    timestamp: currentAgent.timestamp,
+                    logIndex: currentAgent.logIndex,
+                    outputTimestamp: outputLog ? outputLog.timestamp : currentAgent.timestamp,
+                    outputLogIndex: outputLog ? logs.indexOf(outputLog) : currentAgent.logIndex
+                });
+            }
+            
+            // 创建工具列表（在外部作用域）
+            const allTools = [];
+            activities.forEach(activity => {
+                activity.tools.forEach(tool => {
+                    allTools.push({
+                        agentId: activity.id,
+                        agentName: activity.name,
+                        ...tool
+                    });
+                });
+            });
+            
+            // 生成Mermaid流程图代码 - 改为水平布局
+            let mermaidCode = 'graph LR\n';
+            
+            if (activities.length === 0) {
+                mermaidCode += '    Start([Start]) --> End([End])\n';
+            } else {
+                // 添加开始节点
+                mermaidCode += '    Start([Start])\n';
+                
+                // 创建Agent节点 - 使用圆角长方形
+                activities.forEach((activity, index) => {
+                    // 清理Agent名称，确保使用具体名称
+                    let safeName = activity.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
+                    if (!safeName || safeName.match(/^Agent[-\s]*\d*$/i)) {
+                        // 如果是默认名称或空名称，使用更具体的名称
+                        safeName = 'Agent' + (index + 1);
+                    }
+                    // 移除常见的前缀
+                    safeName = safeName.replace(/^(Agent|agent|代理)[-\s]*/i, '');
+                    if (!safeName) {
+                        safeName = 'Agent' + (index + 1);
+                    }
+                    if (safeName.length > 25) {
+                        safeName = safeName.substring(0, 22) + '...';
+                    }
+                    
+                    // 使用圆角长方形显示Agent
+                    mermaidCode += '    ' + activity.id + '(' + safeName + ')\n';
+                });
+                
+                // 连接Agent节点
+                for (let i = 0; i < activities.length - 1; i++) {
+                    mermaidCode += '    ' + activities[i].id + ' --> ' + activities[i + 1].id + '\n';
+                }
+                
+                // 创建工具节点 - 使用方角长方形
+                if (allTools.length > 0) {
+                    allTools.forEach((tool, toolIndex) => {
+                        // 清理工具名称，确保使用具体名称
+                        let safeToolName = tool.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
+                        if (!safeToolName || safeToolName.match(/^Tool[-\s]*\d*$/i)) {
+                            // 如果是默认名称或空名称，使用更描述性的名称
+                            safeToolName = 'Tool' + (toolIndex + 1);
+                        }
+                        // 移除常见的前缀
+                        safeToolName = safeToolName.replace(/^(Tool|tool|Tool)[-\s]*/i, '');
+                        if (!safeToolName) {
+                            safeToolName = 'Tool' + (toolIndex + 1);
+                        }
+                        if (safeToolName.length > 20) {
+                            safeToolName = safeToolName.substring(0, 17) + '...';
+                        }
+                        
+                        // 使用方角长方形显示Tool
+                        mermaidCode += '    ' + tool.id + '[' + safeToolName + ']\n';
+                    });
+                    
+                    // 连接Agent和工具 - 使用虚线
+                    allTools.forEach(tool => {
+                        mermaidCode += '    ' + tool.agentId + ' -.-> ' + tool.id + '\n';
+                        mermaidCode += '    ' + tool.id + ' -.-> ' + tool.agentId + '\n';
+                    });
+                }
+                
+                // 连接开始和结束节点
+                if (activities.length > 0) {
+                    mermaidCode += '    Start --> ' + activities[0].id + '\n';
+                    mermaidCode += '    ' + activities[activities.length-1].id + ' --> End([End])\n';
+                }
+                
+                // 注意：点击事件现在通过JavaScript手动绑定，不在Mermaid代码中声明
+            }
+            
+            // 添加样式
+            mermaidCode += '\n';
+            mermaidCode += '    classDef agentNode fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000,cursor:pointer\n';
+            mermaidCode += '    classDef toolNode fill:#fff3e0,stroke:#f57c00,stroke-width:3px,color:#000,cursor:pointer\n';
+            mermaidCode += '    classDef startEndNode fill:#e8f5e8,stroke:#4caf50,stroke-width:3px,color:#000\n';
+            
+            activities.forEach(activity => {
+                mermaidCode += '    class ' + activity.id + ' agentNode\n';
+            });
+            allTools.forEach(tool => {
+                mermaidCode += '    class ' + tool.id + ' toolNode\n';
+            });
+            mermaidCode += '    class Start,End startEndNode\n';
+            
+            console.log('生成的Mermaid代码:', mermaidCode);
+            
+            // 渲染流程图
+            if (typeof mermaid !== 'undefined') {
+                // 清除之前的内容
+                workflowContainer.innerHTML = '';
+                
+                // 使用现代的Mermaid API
+                try {
+                    const renderResult = await mermaid.render('workflow-graph-' + Date.now(), mermaidCode);
+                    workflowContainer.innerHTML = renderResult.svg;
+                    
+                    // 手动绑定点击事件到SVG元素（使用事件委托，兼容Mermaid生成的ID前缀）
+                    const svgElement = workflowContainer.querySelector('svg');
+                    if (svgElement) {
+                        svgElement.style.cursor = 'pointer';
+                        svgElement.addEventListener('click', function(event) {
+                            const idChain = [];
+                            let node = event.target;
+                            let matched = false;
+
+                            while (node && node !== svgElement) {
+                                if (node.tagName && node.tagName.toLowerCase() === 'g' && node.id) {
+                                    idChain.push(node.id);
+                                    const rawId = node.id.replace(/^flowchart-/, '');
+                                    // 去掉常见的前缀，如 label- / node-
+                                    const candidates = [rawId, rawId.replace(/^(label-|node-)/, '')];
+
+                                    let activityNode = null;
+                                    let toolNode = null;
+
+                                    for (const rid of candidates) {
+                                        activityNode = activities.find(a => rid === a.id || rid.startsWith(a.id + '-') || rid.endsWith('-' + a.id) || rid.includes('-' + a.id + '-'));
+                                        if (activityNode) break;
+                                    }
+                                    if (activityNode) {
+                                        jumpToActivityDetails(activityNode, 'agent', logs);
+                                        matched = true;
+                                        break;
+                                    }
+
+                                    for (const rid of candidates) {
+                                        toolNode = allTools.find(t => rid === t.id || rid.startsWith(t.id + '-') || rid.endsWith('-' + t.id) || rid.includes('-' + t.id + '-'));
+                                        if (toolNode) break;
+                                    }
+                                    if (toolNode) {
+                                        jumpToActivityDetails(toolNode, 'tool', logs);
+                                        matched = true;
+                                        break;
+                                    }
+                                }
+                                node = node.parentElement;
+                            }
+
+                            if (!matched) {
+                                console.warn('Workflow click: no matching node found', {
+                                    clickedTag: event.target.tagName,
+                                    idChain: idChain,
+                                    knownAgentIds: activities.map(a => a.id),
+                                    knownToolIds: allTools.map(t => t.id)
+                                });
+                            }
+                        });
+                    }
+                    
+                    console.log('Mermaid流程图渲染成功');
+                } catch (error) {
+                    console.error('Mermaid渲染失败:', error);
+                    // 回退到旧的渲染方法
+                    try {
+                        const mermaidElement = document.createElement('div');
+                        mermaidElement.className = 'mermaid';
+                        mermaidElement.textContent = mermaidCode;
+                        workflowContainer.appendChild(mermaidElement);
+                        mermaid.init(undefined, mermaidElement);
+                        console.log('使用回退方法渲染流程图');
+                        // 回退渲染后同样绑定事件（事件委托）
+                        const svgElement = workflowContainer.querySelector('svg');
+                        if (svgElement) {
+                            svgElement.style.cursor = 'pointer';
+                            svgElement.addEventListener('click', function(event) {
+                                const idChain = [];
+                                let node = event.target;
+                                let matched = false;
+
+                                while (node && node !== svgElement) {
+                                    if (node.tagName && node.tagName.toLowerCase() === 'g' && node.id) {
+                                        idChain.push(node.id);
+                                        const rawId = node.id.replace(/^flowchart-/, '');
+                                        const candidates = [rawId, rawId.replace(/^(label-|node-)/, '')];
+
+                                        let activityNode = null;
+                                        let toolNode = null;
+
+                                        for (const rid of candidates) {
+                                            activityNode = activities.find(a => rid === a.id || rid.startsWith(a.id + '-') || rid.endsWith('-' + a.id) || rid.includes('-' + a.id + '-'));
+                                            if (activityNode) break;
+                                        }
+                                        if (activityNode) {
+                                            jumpToActivityDetails(activityNode, 'agent', logs);
+                                            matched = true;
+                                            break;
+                                        }
+
+                                        for (const rid of candidates) {
+                                            toolNode = allTools.find(t => rid === t.id || rid.startsWith(t.id + '-') || rid.endsWith('-' + t.id) || rid.includes('-' + t.id + '-'));
+                                            if (toolNode) break;
+                                        }
+                                        if (toolNode) {
+                                            jumpToActivityDetails(toolNode, 'tool', logs);
+                                            matched = true;
+                                            break;
+                                        }
+                                    }
+                                    node = node.parentElement;
+                                }
+
+                                if (!matched) {
+                                    console.warn('Workflow click: no matching node found (fallback)', {
+                                        clickedTag: event.target.tagName,
+                                        idChain: idChain,
+                                        knownAgentIds: activities.map(a => a.id),
+                                        knownToolIds: allTools.map(t => t.id)
+                                    });
+                                }
+                            });
+                        }
+                    } catch (fallbackError) {
+                        console.error('回退渲染也失败:', fallbackError);
+                        workflowContainer.innerHTML = 
+                            '<div class="alert alert-warning">' +
+                                '<i class="fas fa-exclamation-triangle"></i> Workflow rendering failed' +
+                                '<br><small class="text-muted">Mermaid错误: ' + error.message + '</small>' +
+                            '</div>';
+                    }
+                }
+            } else {
+                workflowContainer.innerHTML = 
+                    '<div class="alert alert-info">' +
+                        '<i class="fas fa-info-circle"></i> Mermaid库未加载' +
+                        '<br><small class="text-muted">请检查网络连接或稍后再试</small>' +
+                    '</div>';
+            }
+            
+        } catch (error) {
+            console.error('Workflow generation failed:', error);
+            workflowContainer.innerHTML = 
+                '<div class="alert alert-warning">' +
+                    '<i class="fas fa-exclamation-triangle"></i> Workflow generation failed' +
+                    '<br><small class="text-muted">错误: ' + error.message + '</small>' +
+                '</div>';
+        } finally {
+            // 隐藏加载状态
+            loadingIndicator.style.display = 'none';
+        }
+        
+        // 注意：点击事件现在直接在SVG元素上绑定，不需要全局函数
+    }
+    
+    // 跳转到对应的活动详情
+    function jumpToActivityDetails(activity, type, logs) {
+        console.log('跳转到活动详情:', type, activity);
+        
+        const historyItems = document.querySelectorAll('.history-item');
+        let targetItem = null;
+        
+        // 安全检查logs数组
+        if (!logs || !Array.isArray(logs)) {
+            console.error('无效的logs数组:', logs);
+            return;
+        }
+        
+        // 构建查找候选项列表，按优先级排序
+        const candidates = [];
+        
+        if (type === 'agent') {
+            // 对于Agent，优先级：输出记录 > 输入记录 > 时间戳匹配
+            
+            // 1. 通过outputLogIndex查找输出记录（最高优先级）
+            if (activity.outputLogIndex !== undefined && 
+                activity.outputLogIndex >= 0 && 
+                activity.outputLogIndex < logs.length) {
+                const targetLog = logs[activity.outputLogIndex];
+                candidates.push({
+                    targetType: 'agent_output',
+                    targetTimestamp: targetLog.timestamp,
+                    targetRoleName: targetLog.role_name,
+                    targetLogIndex: activity.outputLogIndex,
+                    priority: 1
+                });
+            }
+            
+            // 2. 通过logIndex查找输入记录（中等优先级）
+            if (activity.logIndex !== undefined && 
+                activity.logIndex >= 0 && 
+                activity.logIndex < logs.length) {
+                const targetLog = logs[activity.logIndex];
+                candidates.push({
+                    targetType: 'agent_input',
+                    targetTimestamp: targetLog.timestamp,
+                    targetRoleName: targetLog.role_name,
+                    targetLogIndex: activity.logIndex,
+                    priority: 2
+                });
+            }
+            
+            // 3. 通过时间戳匹配（最低优先级）
+            if (activity.outputTimestamp) {
+                candidates.push({
+                    targetType: 'agent_output',
+                    targetTimestamp: activity.outputTimestamp,
+                    targetRoleName: activity.originalName || activity.name,
+                    targetLogIndex: activity.outputLogIndex,
+                    priority: 3
+                });
+            }
+            
+            if (activity.timestamp) {
+                candidates.push({
+                    targetType: 'agent_input',
+                    targetTimestamp: activity.timestamp,
+                    targetRoleName: activity.originalName || activity.name,
+                    targetLogIndex: activity.logIndex,
+                    priority: 4
+                });
+            }
+            
+        } else if (type === 'tool') {
+            // 对于Tool，优先级：logIndex查找 > 时间戳匹配
+            
+            // 1. 通过logIndex查找输入记录（高优先级）
+            if (activity.logIndex !== undefined && 
+                activity.logIndex >= 0 && 
+                activity.logIndex < logs.length) {
+                const targetLog = logs[activity.logIndex];
+                candidates.push({
+                    targetType: 'tool_input',
+                    targetTimestamp: targetLog.timestamp,
+                    targetRoleName: targetLog.role_name,
+                    targetLogIndex: activity.logIndex,
+                    priority: 1
+                });
+            }
+            
+            // 2. 通过时间戳匹配（低优先级）
+            if (activity.timestamp) {
+                candidates.push({
+                    targetType: 'tool_input',
+                    targetTimestamp: activity.timestamp,
+                    targetRoleName: activity.name,
+                    targetLogIndex: activity.logIndex,
+                    priority: 2
+                });
+            }
+        }
+        
+        // 按优先级排序候选项
+        candidates.sort((a, b) => a.priority - b.priority);
+        
+        // 遍历候选项，按优先级查找匹配项
+        for (const candidate of candidates) {
+            let foundForCandidate = false;
+
+            // 1) 先尝试通过严格的 logIndex 匹配（唯一且稳定）
+            if (candidate.targetLogIndex !== undefined && candidate.targetLogIndex !== null) {
+                const strictMatch = Array.from(historyItems).find(item => 
+                    item.dataset.type === candidate.targetType &&
+                    item.dataset.logIndex !== undefined &&
+                    Number(item.dataset.logIndex) === Number(candidate.targetLogIndex)
+                );
+                if (strictMatch) {
+                    targetItem = strictMatch;
+                    foundForCandidate = true;
+                }
+            }
+
+            // 2) 若未命中，按时间戳优先级匹配；同等条件下选与目标索引最近的项
+            if (!foundForCandidate) {
+                let bestItem = null;
+                let bestScore = Infinity;
+
+                for (const item of historyItems) {
+                    const timestamp = item.dataset.timestamp;
+                    const itemType = item.dataset.type;
+                    const roleName = item.dataset.roleName;
+
+                    if (itemType !== candidate.targetType) continue;
+
+                    const normalizeTs = (v) => (v == null ? '' : String(v).trim());
+                    const tsItem = normalizeTs(timestamp);
+                    const tsCand = normalizeTs(candidate.targetTimestamp);
+                    const secPart = (s) => s.replace('T',' ').slice(0, 19);
+                    const tsEqual = tsItem && tsCand && tsItem === tsCand;
+                    const tsEqualSec = tsItem && tsCand && secPart(tsItem) === secPart(tsCand);
+                    let tsNear = false;
+                    try {
+                        const ti = Date.parse(tsItem);
+                        const tc = Date.parse(tsCand);
+                        if (!isNaN(ti) && !isNaN(tc)) {
+                            tsNear = Math.abs(ti - tc) <= 2000; // 2 秒容差
+                        }
+                    } catch (_) {}
+
+                    const roleMatch = candidate.targetRoleName && roleName && roleName === candidate.targetRoleName;
+
+                    let quality = null;
+                    if (tsEqual) quality = 0;
+                    else if (tsEqualSec) quality = 1;
+                    else if (tsNear) quality = 2;
+                    else if (roleMatch) quality = 3;
+
+                    if (quality !== null) {
+                        let distance = 999999;
+                        if (candidate.targetLogIndex !== undefined && candidate.targetLogIndex !== null && item.dataset.logIndex !== undefined) {
+                            distance = Math.abs(Number(item.dataset.logIndex) - Number(candidate.targetLogIndex));
+                        }
+                        const score = quality * 100000 + distance;
+                        if (score < bestScore) {
+                            bestScore = score;
+                            bestItem = item;
+                        }
+                    }
+                }
+
+                if (bestItem) {
+                    targetItem = bestItem;
+                    foundForCandidate = true;
+                }
+            }
+
+            if (foundForCandidate) break; // 找到目标项就跳出
+        }
+        
+        if (!targetItem) {
+            console.warn('No matching history record item found (after all strategies):', {
+                type,
+                activity,
+                candidatesCount: candidates.length,
+                candidates,
+                availableItems: Array.from(historyItems).map(el => ({ type: el.dataset.type, ts: el.dataset.timestamp, role: el.dataset.roleName }))
+            });
+        }
+        
+        if (targetItem) {
+            // 清除当前活动项
+            document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
+            
+            // 激活目标项
+            targetItem.classList.add('active');
+            
+            // 滚动到目标项
+            targetItem.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            
+            // 触发点击事件以显示详情
+            setTimeout(() => {
+                targetItem.click();
+            }, 300);
+        } else {
+            console.warn('No matching history record item found:', {
+                type: type,
+                activity: activity,
+                candidatesCount: candidates.length,
+                candidates: candidates
+            });
+        }
+    }
+    
+    // 获取最新数据
+    async function fetchLatestData(forceUpdate = false, skipHistoryUpdate = false) {
+        try {
+            const paths = window.location.pathname.split('/')
+            const taskId = paths[paths.length - 1];
+            const response = await fetch('/api/task/' + taskId + '/logs?timestamp=' + Date.now());
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Get task data, status: ' + data.task.status + ', log number: ' + data.logs.length + ', force update: ' + forceUpdate);
+                
+                // 调试日志数据（已移除以减少控制台噪音）
+                
+                // 检查是否有数据变化
+                const hasStatusChange = !currentTaskData || data.task.status !== currentTaskData.task.status;
+                const hasLogChange = !currentTaskData || data.logs.length !== currentTaskData.logs.length;
+                
+                // 优化内容变化检测 - 更严格的变化检测
+                let hasContentChange = false;
+                if (!currentTaskData) {
+                    hasContentChange = true;
+                } else if (data.logs.length > 0 && currentTaskData.logs.length > 0 && data.logs.length === currentTaskData.logs.length) {
+                    // 只有在日志数量相同时才检查内容变化，避免重复检测
+                    const newLastLog = data.logs[data.logs.length - 1];
+                    const oldLastLog = currentTaskData.logs[currentTaskData.logs.length - 1];
+                    hasContentChange = newLastLog.timestamp !== oldLastLog.timestamp || 
+                                     newLastLog.content !== oldLastLog.content;
+                } else if (data.logs.length !== currentTaskData.logs.length) {
+                    hasContentChange = true; // 数量变化也算内容变化
+                }
+                
+                // 如果是初次加载或强制更新，或者数据确实发生了变化
+                if (forceUpdate || !currentTaskData || hasStatusChange || hasLogChange || hasContentChange) {
+                    
+                    console.log('Data changed, update interface:', {
+                        forceUpdate,
+                        hasStatusChange,
+                        hasLogChange,
+                        hasContentChange,
+                        newLogCount: data.logs.length,
+                        oldLogCount: currentTaskData ? currentTaskData.logs.length : 0
+                    });
+                    
+                    // 更新状态显示
+                    if (hasStatusChange) {
+                        updateTaskStatus(data.task.status);
+                    }
+                    
+                    // 更新历史记录和流程图 - 只有在有日志变化或强制更新时才更新
+                    if ((forceUpdate || hasLogChange || hasContentChange) && !skipHistoryUpdate) {
+                        console.log('Trigger history record update...');
+                        updateHistoryList(data.logs);
+                        await generateWorkflowChart(data.logs);
+                    } else if (skipHistoryUpdate) {
+                        console.log('Skip history record update (skipHistoryUpdate=true)');
+                        // 即使跳过历史记录更新，也要更新流程图
+                        await generateWorkflowChart(data.logs);
+                    } else {
+                        console.log('Skip history record update (no related changes)');
+                    }
+                    
+                    currentTaskData = data;
+                    
+                    // 更新最终执行结果
+                    if (data.task.result && data.task.status === 'completed') {
+                        const resultContainer = document.getElementById('final-result-content');
+                        if (resultContainer && (!resultContainer.innerHTML || resultContainer.innerHTML.includes('<!-- 内容将通过JavaScript动态渲染 -->'))) {
+                            console.log('📝 Update final execution result...');
+                            const renderedResult = renderContent(data.task.result, 'agent_output');
+                            resultContainer.innerHTML = renderedResult;
+                            console.log('✅ Final execution result updated');
+                        }
+                    }
+                } else {
+                    console.log('No data change, skip update');
+                }
+                
+                return data;
+            } else {
+                console.error('Get data failed, HTTP status:', response.status);
+            }
+        } catch (error) {
+            console.error('Get latest data failed:', error);
+        }
+        return null;
+    }
+    
+    // 自动刷新逻辑
+    function startAutoRefresh() {
+        // 确保没有重复的定时器
+        if (refreshInterval) {
+            console.log('Clear existing timer');
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+        
+        console.log('🔄 Start auto refresh timer - check update every 5 seconds');
+        let refreshCount = 0;
+        
+        refreshInterval = setInterval(async () => {
+            try {
+                refreshCount++;
+                console.log(`📡 Auto refresh #${refreshCount}:`, new Date().toLocaleTimeString());
+                
+                showRefreshIndicator();
+                const data = await fetchLatestData();
+                
+                if (!data) {
+                    console.warn('⚠️ Get data failed, will retry next time');
+                    return;
+                }
+                
+                // 如果任务已完成或失败，停止自动刷新
+                if (data.task.status === 'completed' || data.task.status === 'failed') {
+                    console.log('✅ Task status changed to ' + data.task.status + ', stop auto refresh');
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                    
+                    // 更新刷新指示器显示最终状态
+                    const indicator = document.getElementById('refresh-indicator');
+                    if (indicator) {
+                        indicator.textContent = '✅ Task completed';
+                        indicator.classList.add('active');
+                        setTimeout(() => indicator.classList.remove('active'), 3000);
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error during auto refresh:', error);
+            }
+        }, 5000); // 5 seconds refresh once, reduce frequency to avoid repeated problems
+        
+        console.log('✅ Auto refresh timer started');
+    }
+    
+    // 历史记录点击事件
+    document.addEventListener('click', function(e) {
+        const historyItem = e.target.closest('.history-item');
+        if (historyItem) {
+            document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
+            historyItem.classList.add('active');
+            
+            const type = historyItem.dataset.type;
+            const content = historyItem.dataset.content;
+            const timestamp = historyItem.dataset.timestamp;
+            const specificName = historyItem.dataset.roleName;
+            
+            let title = '';
+            if (type === 'agent_input') {
+                title = (specificName ? specificName : 'Agent') + ' input - ' + timestamp;
+            } else if (type === 'agent_output') {
+                title = (specificName ? specificName : 'Agent') + ' output - ' + timestamp;
+            } else if (type === 'tool_input') {
+                title = (specificName ? specificName : 'Tool') + ' call - ' + timestamp;
+            } else if (type === 'tool_output') {
+                title = (specificName ? specificName : 'Tool') + ' result - ' + timestamp;
+            } else {
+                title = type + ' - ' + timestamp;
+            }
+            
+            let detailHtml = renderContent(content, type);
+            
+            document.getElementById('detail-title').textContent = title;
+            document.getElementById('detail-content').innerHTML = detailHtml;
+            
+            // 当 tool_output 的内容为 JSON 且包含 calculate_path 时，注入快捷链接
+            if (type === 'tool_output') {
+                try {
+                    const data = JSON.parse(content);
+                    const basePathRaw = data && (data.calculate_path || data.calc_path || data.calculation_path);
+                    if (basePathRaw && typeof basePathRaw === 'string' && basePathRaw.trim() !== '') {
+                        const basePath = basePathRaw.endsWith('/') ? basePathRaw.slice(0, -1) : basePathRaw;
+                        const incarPath = basePath + '/INCAR';
+                        const kpointsPath = basePath + '/KPOINTS';
+                        const outcarPath = basePath + '/OUTCAR';
+                        
+                        const linksContainer = document.createElement('div');
+                        linksContainer.className = 'mt-3';
+                        linksContainer.innerHTML =
+                            '<div class="small text-muted mb-2">计算目录: <code class="file-path">' + basePath + '</code></div>' +
+                            '<div>' +
+                                '<a href="#" class="btn btn-sm btn-outline-secondary me-2" onclick="showTextFile(decodeURIComponent(\'' + encodeURIComponent(incarPath) + '\'))">' +
+                                    '<i class="fas fa-file-alt"></i> 查看 INCAR</a>' +
+                                '<a href="#" class="btn btn-sm btn-outline-secondary me-2" onclick="showTextFile(decodeURIComponent(\'' + encodeURIComponent(kpointsPath) + '\'))">' +
+                                    '<i class="fas fa-file-alt"></i> 查看 KPOINTS</a>' +
+                                '<a href="#" class="btn btn-sm btn-outline-info" onclick="downloadByFilePath(decodeURIComponent(\'' + encodeURIComponent(outcarPath) + '\'))">' +
+                                    '<i class="fas fa-download"></i> 下载 OUTCAR</a>' +
+                            '</div>';
+                        const detailEl = document.getElementById('detail-content');
+                        detailEl.appendChild(linksContainer);
+                    }
+                } catch (e) { /* 非 JSON 忽略 */ }
+            }
+            
+            if (window.Prism) {
+                Prism.highlightAll();
+            }
+        }
+    });
+    
+    // 页面可见性变化时的处理
+    document.addEventListener('visibilitychange', async function() {
+        if (document.hidden) {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        } else {
+            // 页面重新可见时，检查任务状态再决定是否重新开始刷新
+            if (!refreshInterval) {
+                const data = await fetchLatestData(false); // 不强制更新，避免不必要的状态闪烁
+                if (data && data.task.status !== 'completed' && data.task.status !== 'failed') {
+                    console.log('Page reappeared, task status: ' + data.task.status + ', restart auto refresh');
+                    startAutoRefresh();
+                } else {
+                    console.log('Page reappeared, task status: ' + (data?.task.status || 'Unknown') + ', no auto refresh');
+                }
+            }
+        }
+    });
+    
+    // 全局变量
+    let jsmolApplets = {};
+    let currentTaskId = null;
+    
+    // 获取当前任务ID
+    function getCurrentTaskId() {
+        if (!currentTaskId) {
+            currentTaskId = window.location.pathname.split('/')[2];
+        }
+        return currentTaskId;
+    }
+    
+    // 初始化JSMol
+    function initializeJSMol() {
+        if (typeof Jmol !== 'undefined') {
+            Jmol.setDocument(document);
+            console.log('JSMol initialized');
+        }
+    }
+    
+    // 构建文件 API URL（支持绝对路径）
+    function buildFileApiUrl(filePath) {
+        const taskId = getCurrentTaskId();
+        let processedPath = filePath || '';
+        if (processedPath.startsWith('/')) {
+            processedPath = '__ABS__' + processedPath;
+        }
+        const pathSegments = processedPath.split('/');
+        const encodedSegments = pathSegments.map(segment => encodeURIComponent(segment));
+        const encodedPath = encodedSegments.join('/');
+        return '/api/files/' + taskId + '/' + encodedPath;
+    }
+
+    function getFileName(filePath) {
+        if (!filePath) return 'file.txt';
+        const parts = filePath.split('/');
+        return parts[parts.length - 1] || 'file.txt';
+    }
+
+    // 以文本方式展示文件内容
+    function showTextFile(filePath) {
+        const displayArea = document.getElementById('file-display-area');
+        const displayTitle = document.getElementById('file-display-title');
+        const displayContent = document.getElementById('file-display-content');
+
+        const apiUrl = buildFileApiUrl(filePath);
+
+        displayTitle.innerHTML = '<i class="fas fa-file-alt"></i> 文件内容: ' + filePath;
+        displayContent.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <div class="mt-2">加载文件内容...</div>
+            </div>
+        `;
+        displayArea.style.display = 'block';
+        displayArea.scrollIntoView({ behavior: 'smooth' });
+
+        fetch(apiUrl)
+            .then(resp => {
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                return resp.text();
+            })
+            .then(text => {
+                displayContent.innerHTML = '';
+                const toolbar = document.createElement('div');
+                toolbar.className = 'mb-2';
+                toolbar.innerHTML = '<button class="btn btn-sm btn-outline-info" onclick="downloadByFilePath(\'' + filePath.replace(/'/g, "\\'") + '\')">' +
+                                    '<i class="fas fa-download"></i> 下载</button>';
+                const pre = document.createElement('pre');
+                pre.className = 'mb-0';
+                const code = document.createElement('code');
+                code.textContent = text;
+                pre.appendChild(code);
+                displayContent.appendChild(toolbar);
+                displayContent.appendChild(pre);
+                if (window.Prism) {
+                    Prism.highlightAll();
+                }
+            })
+            .catch(err => {
+                displayContent.innerHTML = 
+                    '<div class="alert alert-danger">' +
+                        '❌ 文件加载失败: ' + err.message + '<br>' +
+                        '<small class="text-muted">' + apiUrl + '</small>' +
+                    '</div>';
+            });
+    }
+
+    // 通过文件路径下载
+    function downloadByFilePath(filePath) {
+        const url = buildFileApiUrl(filePath);
+        downloadFile(url, getFileName(filePath));
+    }
+    
+    // 显示图片文件
+    function showImageFile(filePath, buttonId) {
+        const taskId = getCurrentTaskId();
+        const displayArea = document.getElementById('file-display-area');
+        const displayTitle = document.getElementById('file-display-title');
+        const displayContent = document.getElementById('file-display-content');
+        
+        // 对文件路径进行安全编码，特别处理绝对路径
+        let processedPath = filePath;
+        
+        // 如果是绝对路径，添加特殊标记来保护开头的 /
+        if (filePath.startsWith('/')) {
+            processedPath = '__ABS__' + filePath;
+        }
+        
+        // 将路径分段，逐段编码，然后重新组合
+        const pathSegments = processedPath.split('/');
+        const encodedSegments = pathSegments.map(segment => encodeURIComponent(segment));
+        const encodedPath = encodedSegments.join('/');
+        const apiUrl = '/api/files/' + taskId + '/' + encodedPath;
+        
+        console.log('Original path:', filePath);
+        console.log('Processed path:', processedPath);
+        console.log('Encoded path:', encodedPath);
+        console.log('Full API URL:', apiUrl);
+        
+        // 更新标题
+        displayTitle.innerHTML = '<i class="fas fa-image"></i> Image preview: ' + filePath;
+        
+        // 显示加载状态
+        displayContent.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <div class="mt-2">Loading image...</div>
+            </div>
+        `;
+        
+        // 显示显示区域
+        displayArea.style.display = 'block';
+        displayArea.scrollIntoView({ behavior: 'smooth' });
+        
+        // 加载图片
+        const img = new Image();
+        img.onload = function() {
+            displayContent.innerHTML = 
+                '<div class="text-center">' +
+                    '<img src="' + apiUrl + '" class="content-image" alt="' + filePath + '">' +
+                    '<div class="mt-2">' +
+                        '<small class="text-muted">File path: ' + filePath + '</small>' +
+                    '</div>' +
+                '</div>';
+            console.log('Image loaded successfully:', filePath);
+        };
+        
+        img.onerror = function() {
+            displayContent.innerHTML = 
+                '<div class="alert alert-warning">' +
+                    '<i class="fas fa-exclamation-triangle"></i> Failed to load image' +
+                    '<br><strong>File path:</strong> ' + filePath +
+                    '<br><strong>API URL:</strong> ' + apiUrl +
+                    '<br><small class="text-muted">Please check if the file exists or the path is correct</small>' +
+                '</div>';
+            console.error('Image loading failed:', filePath);
+        };
+        
+        img.src = apiUrl;
+    }
+    
+    // 显示VASP晶体结构文件
+    function showVaspFile(filePath, buttonId) {
+        const taskId = getCurrentTaskId();
+        const displayArea = document.getElementById('file-display-area');
+        const displayTitle = document.getElementById('file-display-title');
+        const displayContent = document.getElementById('file-display-content');
+        
+        // 对文件路径进行安全编码，特别处理绝对路径
+        let processedPath = filePath;
+        
+        // 如果是绝对路径，添加特殊标记来保护开头的 /
+        if (filePath.startsWith('/')) {
+            processedPath = '__ABS__' + filePath;
+        }
+        
+        // 将路径分段，逐段编码，然后重新组合
+        const pathSegments = processedPath.split('/');
+        const encodedSegments = pathSegments.map(segment => encodeURIComponent(segment));
+        const encodedPath = encodedSegments.join('/');
+        const apiUrl = '/api/files/' + taskId + '/' + encodedPath;
+        
+        console.log('Original path:', filePath);
+        console.log('Processed path:', processedPath);
+        console.log('Encoded path:', encodedPath);
+        console.log('Full API URL:', apiUrl);
+        
+        // 更新标题
+        displayTitle.innerHTML = '<i class="fas fa-cube"></i> 晶体结构: ' + filePath;
+        
+        // 创建JSMol容器
+        const jsmolId = 'jsmol_display_' + Date.now();
+        displayContent.innerHTML = 
+            '<div class="jsmol-container">' +
+                '<div class="text-center mb-3">' +
+                    '<h6>Crystal structure visualization</h6>' +
+                    '<small class="text-muted">File: ' + filePath + '</small>' +
+                '</div>' +
+                '<div id="' + jsmolId + '" style="width: 500px; height: 500px; margin: 0 auto; background-color: #fff; border: 1px solid #ccc; border-radius: 5px;"></div>' +
+                '<div class="mt-3">' +
+                    '<button class="btn btn-sm btn-primary" onclick="loadVaspStructure(\'' + jsmolId + '\', \'' + apiUrl + '\')">' +
+                        '<i class="fas fa-play"></i> load structure' +
+                    '</button>' +
+                    '<button class="btn btn-sm btn-secondary ms-2" onclick="resetVaspView(\'' + jsmolId + '\')">' +
+                        '<i class="fas fa-redo"></i> reset view' +
+                    '</button>' +
+                    '<button class="btn btn-sm btn-info ms-2" onclick="downloadFile(\'' + apiUrl + '\', \'' + filePath + '\')">' +
+                        '<i class="fas fa-download"></i> download file' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+        
+        // 显示显示区域
+        displayArea.style.display = 'block';
+        displayArea.scrollIntoView({ behavior: 'smooth' });
+        
+        console.log('Prepare to display VASP structure:', filePath);
+    }
+    
+    // 关闭文件显示区域
+    function closeFileDisplay() {
+        const displayArea = document.getElementById('file-display-area');
+        displayArea.style.display = 'none';
+        
+        // 清理JSMol实例
+        const displayContent = document.getElementById('file-display-content');
+        displayContent.innerHTML = '';
+        
+        console.log('Close file display area');
+    }
+    
+    // 下载文件
+    function downloadFile(url, filename) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    // 加载VASP晶体结构
+    function loadVaspStructure(containerId, fileUrl) {
+        if (typeof Jmol === 'undefined') {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = `
+                    <div class="alert alert-warning">
+                        ⚠️ JSMol not loaded, please try again later
+                        <br><small class="text-muted">JSMol is loading from CDN...</small>
+                    </div>
+                `;
+            }
+            return;
+        }
+        
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.error('JSMol container not found:', containerId);
+            return;
+        }
+        
+        // 显示加载状态
+        container.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <div class="mt-2">Loading crystal structure...</div>
+            </div>
+        `;
+        
+        // 确定JSMol容器的尺寸
+        const containerWidth = container.style.width ? parseInt(container.style.width) : 500;
+        const containerHeight = container.style.height ? parseInt(container.style.height) : 500;
+        
+        // JSMol应用程序配置
+        const jsmolInfo = {
+            width: containerWidth,
+            height: containerHeight,
+            debug: false,
+            color: "white",
+            addSelectionOptions: false,
+            use: "HTML5",
+            j2sPath: "https://chemapps.stolaf.edu/jmol/jsmol/j2s",
+            readyFunction: function(applet) {
+                console.log('JSMol applet ' + applet._id + ' ready, load file: ' + fileUrl);
+            },
+            script: 
+                'load "' + fileUrl + '";' +
+                'if (_loadScript.error) {' +
+                    'print "File loading failed: ' + fileUrl + '";' +
+                    'background white;' +
+                    'color red;' +
+                    'set echo top center;' +
+                    'echo "File loading failed";' +
+                '} else {' +
+                    'spacefill 20%;' +
+                    'wireframe 0.15;' +
+                    'axes on;' +
+                    'unitcell on;' +
+                    'rotate best;' +
+                    'zoom 100;' +
+                    'background white;' +
+                '}'
+        };
+        
+        try {
+            setTimeout(() => {
+                // 创建JSMol应用程序
+                const appletName = 'jsmolApplet_' + containerId;
+                const appletHtml = Jmol.getAppletHtml(appletName, jsmolInfo);
+                container.innerHTML = appletHtml;
+                jsmolApplets[containerId] = appletName;
+                
+                console.log('Loading crystal structure: ' + fileUrl);
+            }, 100);
+        } catch (error) {
+            console.error('Loading crystal structure failed:', error);
+            container.innerHTML = 
+                '<div class="alert alert-danger">' +
+                    '❌ Loading crystal structure failed: ' + error.message +
+                    '<br><small class="text-muted">Please check if the file exists: ' + fileUrl + '</small>' +
+                    '<div class="mt-2">' +
+                        '<button class="btn btn-sm btn-outline-primary" onclick="downloadFile(\'' + fileUrl + '\', \'structure.vasp\')">' +
+                            '<i class="fas fa-download"></i> download file to view' +
+                        '</button>' +
+                    '</div>' +
+                            '</div>';
+        }
+    }
+    
+    // 重置JSMol视图
+    function resetVaspView(containerId) {
+        const appletName = jsmolApplets[containerId];
+        if (appletName && typeof Jmol !== 'undefined') {
+            try {
+                Jmol.script(appletName, "rotate best; zoom 100; center;");
+                console.log('Reset crystal structure view');
+            } catch (error) {
+                console.error('Reset view failed:', error);
+            }
+        }
+    }
+    
+    // 页面加载完成后开始自动刷新
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('🚀 Start initializing Task detail page...');
+        
+        // 初始化Marked配置
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: false,
+                mangle: false
+            });
+            console.log('✅ Marked initialized');
+        } else {
+            console.warn('⚠️ Marked library not loaded');
+        }
+        
+        // 初始化Mermaid
+        if (typeof mermaid !== 'undefined') {
+            mermaid.initialize({ 
+                startOnLoad: false, // 手动控制初始化
+                theme: 'default',
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true,
+                    curve: 'basis'
+                },
+                securityLevel: 'loose', // 允许点击事件
+                themeVariables: {
+                    primaryColor: '#e3f2fd',
+                    primaryTextColor: '#000',
+                    primaryBorderColor: '#1976d2',
+                    lineColor: '#333',
+                    sectionBkgColor: '#f8f9fa',
+                    altSectionBkgColor: '#fff',
+                    gridColor: '#e0e0e0'
+                }
+            });
+            console.log('✅ Mermaid initialized (version: ' + mermaid.version + ')');
+        } else {
+            console.warn('⚠️ Mermaid library not loaded');
+        }
+        
+        // 初始化JSMol
+        initializeJSMol();
+        
+        // 检查是否已有静态渲染的历史记录
+        const existingHistoryItems = document.querySelectorAll('.history-item');
+        const hasStaticContent = existingHistoryItems.length > 0;
+        
+        console.log(`📡 Start getting initial data... (detected ${hasStaticContent ? 'has' : 'no'} static content, currently ${existingHistoryItems.length} history items)`);
+        
+        // 初始化获取一次数据，如果有静态内容就跳过历史记录更新以避免重复
+        const initialData = await fetchLatestData(true, hasStaticContent);
+        
+        if (!initialData) {
+            console.error('❌ Failed to get initial data');
+            return;
+        }
+        
+        console.log('✅ Initial data obtained successfully:', {
+            status: initialData.task.status,
+            logCount: initialData.logs.length,
+            hasStaticContent: hasStaticContent
+        });
+        
+        // 只有在没有静态内容时才需要手动更新历史记录
+        // 如果有静态内容，fetchLatestData已经跳过了历史更新，这里也不需要再更新
+        if (!hasStaticContent) {
+            console.log('🔄 Update history record list (no static content)...');
+            updateHistoryList(initialData.logs);
+        } else {
+            console.log('⏭️ Skip history record update (using static rendering content)');
+            // 保存当前数据供后续比较
+            currentTaskData = initialData;
+        }
+        
+        // 生成初始流程图
+        if (initialData && initialData.logs) {
+            console.log('🎨 Start generating initial workflow chart...');
+            await generateWorkflowChart(initialData.logs);
+        }
+        
+        // 渲染最终执行结果
+        const resultContainer = document.getElementById('final-result-content');
+        if (resultContainer) {
+            // 优先使用API数据，如果没有则检查是否有静态数据
+            let resultData = null;
+            if (initialData && initialData.task.result) {
+                resultData = initialData.task.result;
+                console.log('📝 Use API data to render final execution result...');
+            } else {
+                // 检查是否有静态的task.result数据（通过Jinja2模板传递的）
+                const staticResultElement = document.querySelector('[data-static-result]');
+                if (staticResultElement) {
+                    resultData = staticResultElement.getAttribute('data-static-result');
+                    console.log('📝 Use static data to render final execution result...');
+                }
+            }
+            
+            if (resultData) {
+                const renderedResult = renderContent(resultData, 'agent_output');
+                resultContainer.innerHTML = renderedResult;
+                console.log('✅ Final execution result rendered');
+            }
+        }
+        
+        // 只有当任务还在运行或等待时才开始自动刷新
+        if (initialData && initialData.task.status !== 'completed' && initialData.task.status !== 'failed') {
+            console.log('🔄 Task status: ' + initialData.task.status + ', start auto refresh');
+            startAutoRefresh();
+        } else {
+            console.log('⏹️ Task status: ' + (initialData?.task.status || 'Unknown') + ', no auto refresh');
+            // 清理可能存在的定时器
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+        
+        // 初始化停止按钮状态
+        if (initialData && initialData.task) {
+            updateStopButton(initialData.task.status);
+        }
+        
+        console.log('🎉 Task detail page initialized!');
+    });
+    
+    // 页面卸载时清理
+    window.addEventListener('beforeunload', function() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+    });
+    
+    // 全局函数，供HTML onclick调用
+    window.loadVaspStructure = loadVaspStructure;
+    window.resetVaspView = resetVaspView;
+    window.showImageFile = showImageFile;
+    window.showVaspFile = showVaspFile;
+    window.closeFileDisplay = closeFileDisplay;
+    window.downloadFile = downloadFile;
+    window.stopTask = stopTask;
+    window.showTextFile = showTextFile;
+    window.downloadByFilePath = downloadByFilePath;
+    </script>
+</body>
+</html> 

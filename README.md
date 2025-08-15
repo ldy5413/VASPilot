@@ -16,7 +16,7 @@ VASPilot follows a modular, multi-agent architecture consisting of several key c
 
 - **CrewAI Framework**: Multi-agent orchestration system that manages specialized AI agents
 - **MCP Server**: Model Control Protocol server providing tools for VASP calculations and materials analysis
-- **Flask Web Server**: Web interface for task submission and monitoring
+- **Quart and Flask Web Server**: Web interface for task submission and monitoring
 - **Specialized Agents**:
   - **Crystal Structure Agent**: Handles structure search, analysis, and manipulation
   - **VASP Agent**: Manages VASP calculations (relaxation, SCF, NSCF)
@@ -158,10 +158,11 @@ cd examples/1.Basic/mcp/
 
 #### 2. Start CrewAI Server
 
-Start the main CrewAI server with web interface:
+Start the main CrewAI server with `Quart` web interface:
 
 ```bash
-vaspilot_server --config /path/to/configs/crew_config.yaml --port 51293 --work-dir /path/to/work/directory --allow-path /path/to/project/
+vaspilot_quart --config /path/to/configs/crew_config.yaml --port 51293 --work-dir /path/to/work/directory --allow-path /path/to/project/ \ 
+--max-concurrent-tasks 2 --max-queue-size 10
 ```
 
 Or use the provided script:
@@ -253,6 +254,10 @@ If you find VASPilot helpful, you are welcome to cite this article:
 ### Flask
   - [Gihub Repository](https://github.com/pallets/flask)
   - [Website](https://flask.palletsprojects.com/en/stable/)
+
+### Quart
+  - [Gihub Repository](https://github.com/pallets/quart)
+  - [Website](https://quart.palletsprojects.com/en/latest/)
 
 ### Pymatgen
   - [Github Repository](https://github.com/materialsproject/pymatgen)

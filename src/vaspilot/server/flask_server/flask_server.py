@@ -718,31 +718,31 @@ class FlaskCrewServer(CrewServer):
             self.system_log("任务执行完成！")
 
     # CrewServer接口实现
-    def system_log(self, message: str):
+    def system_log(self, message: str, crew_fingerprint: str = None):
         """实现系统日志方法"""
         timestamp = datetime.now().strftime("%H:%M:%S")
         log_entry = f"[{timestamp}] {message}"
         
-        # 获取当前会话ID（如果在任务执行中）
+        # 获取当前会话ID（Flask版本继续使用原来的方式，因为是单任务）
         current_conversation_id = getattr(self, '_current_conversation_id', None)
         if current_conversation_id:
             self._log_to_db(current_conversation_id, 'system', log_entry, role_name='system')
 
-    def agent_input(self, agent_role: str, message: str):
+    def agent_input(self, agent_role: str, message: str, crew_fingerprint: str = None):
         """实现Agent输入方法"""
         log_content = f"[{agent_role}] {message}"
         current_conversation_id = getattr(self, '_current_conversation_id', None)
         if current_conversation_id:
             self._log_to_db(current_conversation_id, 'agent_input', log_content, role_name=agent_role)
 
-    def agent_output(self, agent_role: str, message: str):
+    def agent_output(self, agent_role: str, message: str, crew_fingerprint: str = None):
         """实现Agent输出方法"""
         log_content = f"[{agent_role}] {message}"
         current_conversation_id = getattr(self, '_current_conversation_id', None)
         if current_conversation_id:
             self._log_to_db(current_conversation_id, 'agent_output', log_content, role_name=agent_role)
 
-    def tool_input(self, tool_name: str, message: Any):
+    def tool_input(self, tool_name: str, message: Any, crew_fingerprint: str = None):
         """实现Tool输入方法"""
         if isinstance(message, (dict, list)):
             log_content = json.dumps(message, ensure_ascii=False)
@@ -756,7 +756,7 @@ class FlaskCrewServer(CrewServer):
         if current_conversation_id:
             self._log_to_db(current_conversation_id, 'tool_input', log_content, role_name=tool_name)
 
-    def tool_output(self, tool_name: str, message: Any):
+    def tool_output(self, tool_name: str, message: Any, crew_fingerprint: str = None):
         """实现Tool输出方法"""
         if isinstance(message, (dict, list)):
             log_content = json.dumps(message, ensure_ascii=False)

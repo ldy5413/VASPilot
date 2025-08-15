@@ -2,6 +2,7 @@ from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
 from crewai.utilities import I18N
 import os
+import copy
 from crewai.memory import LongTermMemory, ShortTermMemory, EntityMemory
 from crewai.memory.storage.ltm_sqlite_storage import LTMSQLiteStorage
 from crewai.memory.storage.rag_storage import RAGStorage
@@ -27,7 +28,8 @@ class VaspCrew():
 			self.llm_config[key] = LLM(**self.llm_mapper[value])
 		self.tool_dicts = {}
 		if self.config['mcp_server'] is not None:
-			self.mcp_server = MCPServerAdapter(self.config['mcp_server'])
+			mcp_params = copy.deepcopy(self.config['mcp_server'])
+			self.mcp_server = MCPServerAdapter(mcp_params)
 		for tools in self.mcp_server.tools:
 			self.tool_dicts[tools.name] = tools
 		self.tool_dicts["wait_calc_tool"] = WaitCalcTool(mcp_url=self.config['mcp_server']['url'])
