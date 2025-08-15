@@ -97,6 +97,8 @@ class QuartCrewServer(CrewServer):
         self._conversation_to_fingerprint: Dict[str, str] = {}
         self._fingerprint_to_conversation: Dict[str, str] = {}
         self._mapping_lock = threading.Lock()
+        self._running_threads: Dict[str, threading.Thread] = {}
+        self._crew_thread_ids: Dict[str, int] = {}
         
         # 设置路由
         self._setup_routes()
@@ -842,6 +844,50 @@ class QuartCrewServer(CrewServer):
             self.system_log(f"提取计算ID时出错: {str(e)}")
             return []
 
+    def _run_crew_kickoff_thread(self, crew, result_container: Dict[str, Any], conversation_id: str) -> None:
+        """在独立线程中执行 crew.kickoff 并记录线程ID与结果。"""
+        self._crew_thread_ids[conversation_id] = threading.get_ident()
+        try:
+            result_container['result'] = crew.kickoff()
+        except BaseException as e:
+            result_container['error'] = e
+        finally:
+            try:
+                self._crew_thread_ids.pop(conversation_id, None)
+            except Exception:
+                pass
+
+    def _inject_exception_into_thread(self, thread_id: int, exc_type=SystemExit) -> bool:
+        """向目标线程异步注入异常以尝试强制结束。
+        返回 True 表示已注入，False 表示失败或回滚。
+        """
+        try:
+            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread_id), ctypes.py_object(exc_type))
+            if res > 1:
+                ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread_id), 0)
+                return False
+            return res == 1
+        except Exception:
+            return False
+
+    async def _stop_and_join_crew_thread(self, conversation_id: str, timeout: float = 5.0) -> bool:
+        """尝试强制结束并等待指定会话对应的 crew 执行线程退出。"""
+        thread = self._running_threads.get(conversation_id)
+        thread_id = self._crew_thread_ids.get(conversation_id)
+        stopped = False
+        if thread_id is not None:
+            stopped = self._inject_exception_into_thread(thread_id, SystemExit)
+            print(f"injected, result={stopped}")
+        print(f"result={stopped}")
+        if thread is not None and thread.is_alive():
+            loop = asyncio.get_event_loop()
+            start = loop.time()
+            while thread.is_alive() and (loop.time() - start) < timeout:
+                await asyncio.sleep(0.05)
+        self._running_threads.pop(conversation_id, None)
+        self._crew_thread_ids.pop(conversation_id, None)
+        return stopped
+
     async def _execute_crew_task_async(self, conversation_id, task_description):
         """异步执行crew任务"""
         async with self.task_semaphore:
@@ -885,8 +931,23 @@ class QuartCrewServer(CrewServer):
                     crew.tasks = [task]
                     
                     self.system_log("Starting task execution...", crew.fingerprint.uuid_str)
-                    # 异步执行crew
-                    result = await crew.kickoff_async()
+                    # 在线程中执行同步 kickoff，便于后续强制停止
+                    result_container: Dict[str, Any] = {}
+                    thread = threading.Thread(
+                        target=self._run_crew_kickoff_thread,
+                        args=(crew, result_container, conversation_id),
+                        daemon=True,
+                        name=f"crew-kickoff-{conversation_id[:8]}"
+                    )
+                    self._running_threads[conversation_id] = thread
+                    thread.start()
+                    # 异步轮询等待线程结束
+                    while thread.is_alive():
+                        await asyncio.sleep(0.1)
+                    # 线程结束后获取结果或异常
+                    if 'error' in result_container:
+                        raise result_container['error']
+                    result = result_container.get('result')
                     
                     self.system_log("Task completed!", crew.fingerprint.uuid_str)
                     self.agent_output("FinalResult", str(result), crew.fingerprint.uuid_str)
@@ -900,9 +961,20 @@ class QuartCrewServer(CrewServer):
                         await conn.commit()
                 finally:
                     os.chdir(old_cwd)
-                        
+                         
             except asyncio.CancelledError:
                 # 任务被取消
+                # 强制停止后台 crew 执行线程并等待退出
+                try:
+                    await self._stop_and_join_crew_thread(conversation_id)
+                except Exception:
+                    pass
+                # 尝试停止 generator（若存在）
+                try:
+                    if 'generator' in locals() and hasattr(generator, 'stop'):
+                        generator.stop()
+                except Exception:
+                    pass
                 async with aiosqlite.connect(self.db_path) as conn:
                     await conn.execute(
                         'UPDATE task_executions SET status = ?, completed_at = CURRENT_TIMESTAMP, error_message = ? WHERE conversation_id = ?',

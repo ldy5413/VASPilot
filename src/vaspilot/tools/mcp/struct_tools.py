@@ -177,6 +177,8 @@ def search_materials_project(
         if "is_gap_direct" in search_criteria:
             search_params["is_gap_direct"] = search_criteria["is_gap_direct"]
         
+        search_params["num_chunks"] = 1
+        search_params["chunk_size"] = limit
         # 执行搜索
         try:
             with MPRester(api_key) as mpr:
@@ -205,7 +207,7 @@ def search_materials_project(
                 "count": 0,
                 "search_criteria": search_criteria
             }
-        
+
         # 处理搜索结果
         materials_list = []
         for material_data in materials_data:
@@ -336,7 +338,7 @@ def make_supercell(
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
         else:
             output_path = struct_path.replace('.vasp', f'_sc_{supercell_matrix}.vasp')
-        supercell_struct.to(filename=output_path)
+        supercell_struct.to(filename=output_path, fmt="poscar")
         
         return {
             "success": True,
@@ -466,10 +468,10 @@ def symmetrize_structure(
         # 如果提供了输出路径，保存结构文件
         if output_path:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            symmetrized_struct.to(filename=output_path)
+            symmetrized_struct.to(filename=output_path, fmt="poscar")
         else:
             output_path = struct_path.replace('.vasp', f'_sym.vasp')
-            symmetrized_struct.to(filename=output_path)
+            symmetrized_struct.to(filename=output_path, fmt="poscar")
         
         return {
             "success": True,
@@ -526,7 +528,7 @@ def convert_structure_format(
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
         # 保存结构
-        struct.to(filename=output_path)
+        struct.to(filename=output_path, fmt="poscar")
         
         return {
             "success": True,
