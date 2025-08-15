@@ -69,4 +69,12 @@ VASP_default_INCAR:
     LSORBIT: True
     LORBIT: 11
     NELM: 120
+  wannier90:
+    ISYM: -1
+    ICHARG: 11
+    LSORBIT: True
+    LORBIT: 11
+    NELM: 120
+    LWANNIER90: True
+    
 
