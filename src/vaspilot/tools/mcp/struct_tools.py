@@ -316,6 +316,8 @@ def make_supercell(
                 fmt = "poscar"
             elif struct_path.split(".")[-1] in ["cif"]:
                 fmt = "cif"
+            else:
+                fmt = "poscar"
             with open(struct_path, "r") as f:
                 struct = Structure.from_str(f.read(), fmt=fmt)
         else:
@@ -380,6 +382,8 @@ def rotate_structure(
                 fmt = "poscar"
             elif struct_path.split(".")[-1] in ["cif"]:
                 fmt = "cif"
+            else:
+                fmt = "poscar"
             with open(struct_path, "r") as f:
                 struct = Structure.from_str(f.read(), fmt=fmt)
         else:
@@ -440,6 +444,8 @@ def symmetrize_structure(
                 fmt = "poscar"
             elif struct_path.split(".")[-1] in ["cif"]:
                 fmt = "cif"
+            else:
+                fmt = "poscar"
             with open(struct_path, "r") as f:
                 struct = Structure.from_str(f.read(), fmt=fmt)
         else:

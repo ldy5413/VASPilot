@@ -136,7 +136,7 @@
                     <div class="card-body">
                         <h6 class="card-title">Upload crystal structure file</h6>
                         <div class="d-flex align-items-center gap-2">
-                            <input id="structure-file" type="file" class="form-control form-control-sm" accept=".vasp,.cif,.xyz,POSCAR,CONTCAR">
+                            <input id="structure-file" type="file" class="form-control form-control-sm">
                             <button id="upload-btn" class="btn btn-secondary btn-sm">Upload</button>
                         </div>
                         <div id="upload-message" class="mt-2 small text-muted"></div>
@@ -179,6 +179,16 @@
                 return;
             }
             const file = fileInput.files[0];
+            // Validate allowed file types: .vasp/.cif/.xyz or POSCAR/CONTCAR (no extension)
+            const fileName = file && file.name ? file.name : '';
+            const nameUpper = fileName.toUpperCase();
+            const lower = fileName.toLowerCase();
+            const allowed = lower.endsWith('.vasp') || lower.endsWith('.cif') || lower.endsWith('.xyz') || nameUpper === 'POSCAR' || nameUpper === 'CONTCAR';
+            if (!allowed) {
+                msg.textContent = 'Only .vasp/.cif/.xyz or POSCAR/CONTCAR files are allowed';
+                msg.className = 'mt-2 small text-danger';
+                return;
+            }
             const formData = new FormData();
             formData.append('file', file);
             this.disabled = true;
