@@ -150,20 +150,24 @@ def search_materials_project(
         # 带隙范围
         if "band_gap" in search_criteria:
             band_gap_range = search_criteria["band_gap"]
-            if isinstance(band_gap_range, tuple) and len(band_gap_range) == 2:
-                search_params["band_gap"] = band_gap_range
+            if isinstance(band_gap_range, (tuple, list)) and len(band_gap_range) == 2:
+                min_bg, max_bg = band_gap_range
+                search_params["band_gap"] = (min_bg, max_bg)
+            elif isinstance(band_gap_range, (int, float)):
+                # 单值视为下限
+                search_params["band_gap"] = (band_gap_range, None)
         
         # 形成能范围
         if "energy_above_hull" in search_criteria:
             energy_range = search_criteria["energy_above_hull"]
-            if isinstance(energy_range, tuple) and len(energy_range) == 2:
-                search_params["energy_above_hull"] = energy_range
+            if isinstance(energy_range,  (tuple, list)) and len(energy_range) == 2:
+                search_params["energy_above_hull"] = tuple(energy_range)
         
         # 原子数范围
-        if "nsites" in search_criteria:
+        if "num_sites" in search_criteria:
             nsites_range = search_criteria["num_sites"]
-            if isinstance(nsites_range, tuple) and len(nsites_range) == 2:
-                search_params["num_sites"] = nsites_range
+            if isinstance(nsites_range, (tuple, list)) and len(nsites_range) == 2:
+                search_params["num_sites"] = tuple(nsites_range)
         
         # 空间群编号
         if "spacegroup_number" in search_criteria:
@@ -182,7 +186,7 @@ def search_materials_project(
         # 执行搜索
         try:
             with MPRester(api_key) as mpr:
-                materials_data = mpr.summary.search(
+                materials_data = mpr.materials.summary.search(
                     **search_params
                 )
         except Exception as query_error:
