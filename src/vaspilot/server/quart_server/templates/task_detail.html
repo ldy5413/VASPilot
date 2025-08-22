@@ -1815,7 +1815,11 @@
                         const basePath = basePathRaw.endsWith('/') ? basePathRaw.slice(0, -1) : basePathRaw;
                         const incarPath = basePath + '/INCAR';
                         const kpointsPath = basePath + '/KPOINTS';
+                        const contcarPath = basePath + '/CONTCAR';
+                        const oszicarPath = basePath + '/OSZICAR';
                         const outcarPath = basePath + '/OUTCAR';
+                        const doscarPath = basePath + '/DOSCAR';
+                        const eigenvalPath = basePath + '/EIGENVAL';
                         
                         const linksContainer = document.createElement('div');
                         linksContainer.className = 'mt-3';
@@ -1823,11 +1827,19 @@
                             '<div class="small text-muted mb-2">计算目录: <code class="file-path">' + basePath + '</code></div>' +
                             '<div>' +
                                 '<a href="#" class="btn btn-sm btn-outline-secondary me-2" onclick="showTextFile(decodeURIComponent(\'' + encodeURIComponent(incarPath) + '\'))">' +
-                                    '<i class="fas fa-file-alt"></i> 查看 INCAR</a>' +
+                                    '<i class="fas fa-file-alt"></i> show INCAR</a>' +
                                 '<a href="#" class="btn btn-sm btn-outline-secondary me-2" onclick="showTextFile(decodeURIComponent(\'' + encodeURIComponent(kpointsPath) + '\'))">' +
-                                    '<i class="fas fa-file-alt"></i> 查看 KPOINTS</a>' +
+                                    '<i class="fas fa-file-alt"></i> show KPOINTS</a>' +
+                                '<a href="#" class="btn btn-sm btn-outline-secondary me-2" onclick="showTextFile(decodeURIComponent(\'' + encodeURIComponent(contcarPath) + '\'))">' +
+                                    '<i class="fas fa-file-alt"></i> show CONTCAR</a>' +
+                                '<a href="#" class="btn btn-sm btn-outline-secondary me-2" onclick="showTextFile(decodeURIComponent(\'' + encodeURIComponent(oszicarPath) + '\'))">' +
+                                    '<i class="fas fa-file-alt"></i> show OSZICAR</a>' +
                                 '<a href="#" class="btn btn-sm btn-outline-info" onclick="downloadByFilePath(decodeURIComponent(\'' + encodeURIComponent(outcarPath) + '\'))">' +
-                                    '<i class="fas fa-download"></i> 下载 OUTCAR</a>' +
+                                    '<i class="fas fa-download"></i> download OUTCAR</a>' +
+                                '<a href="#" class="btn btn-sm btn-outline-info" onclick="downloadByFilePath(decodeURIComponent(\'' + encodeURIComponent(doscarPath) + '\'))">' +
+                                    '<i class="fas fa-download"></i> download DOSCAR</a>' +
+                                '<a href="#" class="btn btn-sm btn-outline-info" onclick="downloadByFilePath(decodeURIComponent(\'' + encodeURIComponent(eigenvalPath) + '\'))">' +
+                                    '<i class="fas fa-download"></i> download EIGENVAL</a>' +
                             '</div>';
                         const detailEl = document.getElementById('detail-content');
                         detailEl.appendChild(linksContainer);
