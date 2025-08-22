@@ -340,6 +340,12 @@ def check_status(calc_dict: dict[str, dict[str, Any]]) -> Dict[str, Any]:
                     else:
                         job_status = state.lower()
                         job_result = {"error": f"SLURM job exited with state: {state}"}
+                elif state == "CANCELLED":
+                    job_status = "cancelled"
+                    job_result = {"error": f"SLURM job cancelled"}
+                elif state == "PENDING":
+                    job_status = "pending"
+                    job_result = {"error": f"SLURM job pending"}
                 else:
                     job_status = "unknown"
                     job_result = {"error": "Cannot determine job status"}
