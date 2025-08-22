@@ -147,6 +147,16 @@
                 <div class="card mb-3">
                     <div class="card-body">
                         <h6 class="card-title">Submit new mission</h6>
+                        <div id="selected-structure" class="mb-2 d-none">
+                            <div class="alert alert-secondary py-1 px-2 d-flex justify-content-between align-items-center mb-0">
+                                <div>
+                                    <strong>Selected structure:</strong>
+                                    <span id="selected-structure-name"></span>
+                                    <small class="text-muted" id="selected-structure-path"></small>
+                                </div>
+                                <button id="clear-structure-btn" type="button" class="btn btn-sm btn-outline-secondary">Clear</button>
+                            </div>
+                        </div>
                         <form id="task-form">
                             <div class="mb-3">
                                 <textarea id="task-description" class="form-control" rows="3" placeholder="Please enter the mission description..." required></textarea>
@@ -168,11 +178,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
     
     <script>
-        // File upload
-        document.getElementById('upload-btn').addEventListener('click', async function () {
+        // File upload (auto upload on select, and show as separate component)
+        function setSelectedStructure(filename, path) {
+            const container = document.getElementById('selected-structure');
+            const nameEl = document.getElementById('selected-structure-name');
+            const pathEl = document.getElementById('selected-structure-path');
+            if (filename && path) {
+                nameEl.textContent = filename;
+                pathEl.textContent = ` (${path})`;
+                container.dataset.path = path;
+                container.classList.remove('d-none');
+            } else {
+                nameEl.textContent = '';
+                pathEl.textContent = '';
+                delete container.dataset.path;
+                container.classList.add('d-none');
+            }
+        }
+
+        async function uploadStructure() {
             const fileInput = document.getElementById('structure-file');
             const msg = document.getElementById('upload-message');
-            const taskInput = document.getElementById('task-description');
+            const uploadBtn = document.getElementById('upload-btn');
             if (!fileInput.files || fileInput.files.length === 0) {
                 msg.textContent = 'Please select a file';
                 msg.className = 'mt-2 small text-danger';
@@ -191,16 +218,16 @@
             }
             const formData = new FormData();
             formData.append('file', file);
-            this.disabled = true;
-            this.textContent = 'Uploading...';
+            if (uploadBtn) {
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Uploading...';
+            }
             msg.textContent = '';
             try {
                 const resp = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await resp.json();
                 if (resp.ok && data.success) {
-                    const path = data.path;
-                    const prefix = taskInput.value && !taskInput.value.endsWith('\n') ? '\n' : '';
-                    taskInput.value = taskInput.value + prefix + `structure_file: ${path}` + '\n';
+                    setSelectedStructure(data.filename, data.path);
                     msg.textContent = `Uploaded: ${data.filename}`;
                     msg.className = 'mt-2 small text-success';
                     fileInput.value = '';
@@ -212,8 +239,23 @@
                 msg.textContent = 'Network error: ' + e.message;
                 msg.className = 'mt-2 small text-danger';
             } finally {
-                this.disabled = false;
-                this.textContent = 'Upload';
+                if (uploadBtn) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'Upload';
+                }
+            }
+        }
+
+        document.getElementById('upload-btn').addEventListener('click', uploadStructure);
+        document.getElementById('structure-file').addEventListener('change', uploadStructure);
+        document.getElementById('clear-structure-btn').addEventListener('click', function() {
+            setSelectedStructure('', '');
+            const fileInput = document.getElementById('structure-file');
+            if (fileInput) fileInput.value = '';
+            const msg = document.getElementById('upload-message');
+            if (msg) {
+                msg.textContent = '';
+                msg.className = 'mt-2 small text-muted';
             }
         });
         
@@ -237,10 +279,17 @@
             submitText.textContent = 'Submitting...';
             
             try {
+                const selectedContainer = document.getElementById('selected-structure');
+                const structurePath = selectedContainer && selectedContainer.dataset ? selectedContainer.dataset.path : '';
+                let finalTaskDescription = taskDescription;
+                if (structurePath) {
+                    const prefix = finalTaskDescription && !finalTaskDescription.endsWith('\n') ? '\n' : '';
+                    finalTaskDescription = finalTaskDescription + prefix + `structure_file: ${structurePath}`;
+                }
                 const response = await fetch('/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ task_description: taskDescription })
+                    body: JSON.stringify({ task_description: finalTaskDescription })
                 });
                 
                 const data = await response.json();
@@ -248,6 +297,7 @@
                 if (response.ok) {
                     showMessage(data.message, 'success');
                     document.getElementById('task-description').value = '';
+                    setSelectedStructure('', '');
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     showMessage(data.error, 'danger');
