@@ -136,8 +136,7 @@
                     <div class="card-body">
                         <h6 class="card-title">Upload crystal structure file</h6>
                         <div class="d-flex align-items-center gap-2">
-                            <input id="structure-file" type="file" class="form-control form-control-sm">
-                            <button id="upload-btn" class="btn btn-secondary btn-sm">Upload</button>
+                            <input id="structure-file" type="file" class="form-control form-control-sm" multiple>
                         </div>
                         <div id="upload-message" class="mt-2 small text-muted"></div>
                     </div>
@@ -147,16 +146,7 @@
                 <div class="card mb-3">
                     <div class="card-body">
                         <h6 class="card-title">Submit new mission</h6>
-                        <div id="selected-structure" class="mb-2 d-none">
-                            <div class="alert alert-secondary py-1 px-2 d-flex justify-content-between align-items-center mb-0">
-                                <div>
-                                    <strong>Selected structure:</strong>
-                                    <span id="selected-structure-name"></span>
-                                    <small class="text-muted" id="selected-structure-path"></small>
-                                </div>
-                                <button id="clear-structure-btn" type="button" class="btn btn-sm btn-outline-secondary">Clear</button>
-                            </div>
-                        </div>
+                        <div id="selected-structures" class="mb-2 d-none"></div>
                         <form id="task-form">
                             <div class="mb-3">
                                 <textarea id="task-description" class="form-control" rows="3" placeholder="Please enter the mission description..." required></textarea>
@@ -179,85 +169,98 @@
     
     <script>
         // File upload (auto upload on select, and show as separate component)
-        function setSelectedStructure(filename, path) {
-            const container = document.getElementById('selected-structure');
-            const nameEl = document.getElementById('selected-structure-name');
-            const pathEl = document.getElementById('selected-structure-path');
-            if (filename && path) {
-                nameEl.textContent = filename;
-                pathEl.textContent = ` (${path})`;
-                container.dataset.path = path;
-                container.classList.remove('d-none');
-            } else {
-                nameEl.textContent = '';
-                pathEl.textContent = '';
-                delete container.dataset.path;
+        const selectedStructures = [];
+
+        function renderSelectedStructures() {
+            const container = document.getElementById('selected-structures');
+            if (!container) return;
+            if (selectedStructures.length === 0) {
                 container.classList.add('d-none');
+                container.innerHTML = '';
+                return;
             }
+            container.classList.remove('d-none');
+            container.innerHTML = selectedStructures.map(s => `
+                <div class="alert alert-secondary py-1 px-2 d-flex justify-content-between align-items-center mb-1 selected-structure-item" data-path="${s.path}">
+                    <div class="me-2">
+                        <strong class="me-1">${s.filename}</strong>
+                        <small class="text-muted">${s.path}</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary remove-structure-btn">Clear</button>
+                </div>
+            `).join('');
+        }
+
+        function addSelectedStructure(filename, path) {
+            if (!filename || !path) return;
+            if (!selectedStructures.some(s => s.path === path)) {
+                selectedStructures.push({ filename, path });
+                renderSelectedStructures();
+            }
+        }
+
+        function removeSelectedStructure(path) {
+            const idx = selectedStructures.findIndex(s => s.path === path);
+            if (idx !== -1) {
+                selectedStructures.splice(idx, 1);
+                renderSelectedStructures();
+            }
+        }
+
+        function clearSelectedStructures() {
+            selectedStructures.splice(0, selectedStructures.length);
+            renderSelectedStructures();
         }
 
         async function uploadStructure() {
             const fileInput = document.getElementById('structure-file');
             const msg = document.getElementById('upload-message');
-            const uploadBtn = document.getElementById('upload-btn');
             if (!fileInput.files || fileInput.files.length === 0) {
                 msg.textContent = 'Please select a file';
                 msg.className = 'mt-2 small text-danger';
                 return;
             }
-            const file = fileInput.files[0];
-            // Validate allowed file types: .vasp/.cif/.xyz or POSCAR/CONTCAR (no extension)
-            const fileName = file && file.name ? file.name : '';
-            const nameUpper = fileName.toUpperCase();
-            const lower = fileName.toLowerCase();
-            const allowed = lower.endsWith('.vasp') || lower.endsWith('.cif') || lower.endsWith('.xyz') || nameUpper === 'POSCAR' || nameUpper === 'CONTCAR';
-            if (!allowed) {
-                msg.textContent = 'Only .vasp/.cif/.xyz or POSCAR/CONTCAR files are allowed';
-                msg.className = 'mt-2 small text-danger';
-                return;
-            }
-            const formData = new FormData();
-            formData.append('file', file);
-            if (uploadBtn) {
-                uploadBtn.disabled = true;
-                uploadBtn.textContent = 'Uploading...';
-            }
+            const files = Array.from(fileInput.files);
             msg.textContent = '';
+            msg.className = 'mt-2 small text-muted';
+            fileInput.disabled = true;
+
+            const results = [];
             try {
-                const resp = await fetch('/upload', { method: 'POST', body: formData });
-                const data = await resp.json();
-                if (resp.ok && data.success) {
-                    setSelectedStructure(data.filename, data.path);
-                    msg.textContent = `Uploaded: ${data.filename}`;
-                    msg.className = 'mt-2 small text-success';
-                    fileInput.value = '';
-                } else {
-                    msg.textContent = data.error || 'Upload failed';
-                    msg.className = 'mt-2 small text-danger';
+                for (const file of files) {
+                    const fileName = file && file.name ? file.name : '';
+                    const nameUpper = fileName.toUpperCase();
+                    const lower = fileName.toLowerCase();
+                    const allowed = lower.endsWith('.vasp') || lower.endsWith('.cif') || lower.endsWith('.xyz') || nameUpper === 'POSCAR' || nameUpper === 'CONTCAR';
+                    if (!allowed) {
+                        results.push(`Skip: ${fileName} (invalid type)`);
+                        continue;
+                    }
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                        const resp = await fetch('/upload', { method: 'POST', body: formData });
+                        const data = await resp.json();
+                        if (resp.ok && data.success) {
+                            addSelectedStructure(data.filename, data.path);
+                            results.push(`Uploaded: ${data.filename}`);
+                        } else {
+                            results.push(`Failed: ${fileName} (${data.error || 'Upload failed'})`);
+                        }
+                    } catch (e) {
+                        results.push(`Failed: ${fileName} (Network error: ${e.message})`);
+                    }
                 }
-            } catch (e) {
-                msg.textContent = 'Network error: ' + e.message;
-                msg.className = 'mt-2 small text-danger';
             } finally {
-                if (uploadBtn) {
-                    uploadBtn.disabled = false;
-                    uploadBtn.textContent = 'Upload';
-                }
+                fileInput.disabled = false;
+                fileInput.value = '';
             }
+            const ok = results.some(line => line.startsWith('Uploaded:'));
+            msg.className = 'mt-2 small ' + (ok ? 'text-success' : 'text-danger');
+            msg.innerHTML = results.join('<br>');
         }
 
-        document.getElementById('upload-btn').addEventListener('click', uploadStructure);
         document.getElementById('structure-file').addEventListener('change', uploadStructure);
-        document.getElementById('clear-structure-btn').addEventListener('click', function() {
-            setSelectedStructure('', '');
-            const fileInput = document.getElementById('structure-file');
-            if (fileInput) fileInput.value = '';
-            const msg = document.getElementById('upload-message');
-            if (msg) {
-                msg.textContent = '';
-                msg.className = 'mt-2 small text-muted';
-            }
-        });
         
         // Task submit
         document.getElementById('task-form').addEventListener('submit', async function(e) {
@@ -279,12 +282,13 @@
             submitText.textContent = 'Submitting...';
             
             try {
-                const selectedContainer = document.getElementById('selected-structure');
-                const structurePath = selectedContainer && selectedContainer.dataset ? selectedContainer.dataset.path : '';
+                const items = Array.from(document.querySelectorAll('#selected-structures .selected-structure-item'));
+                const paths = items.map(item => item.dataset.path).filter(Boolean);
                 let finalTaskDescription = taskDescription;
-                if (structurePath) {
+                if (paths.length) {
                     const prefix = finalTaskDescription && !finalTaskDescription.endsWith('\n') ? '\n' : '';
-                    finalTaskDescription = finalTaskDescription + prefix + `structure_file: ${structurePath}`;
+                    const extra = paths.map(p => `structure_file: ${p}`).join('\n');
+                    finalTaskDescription = finalTaskDescription + prefix + extra;
                 }
                 const response = await fetch('/submit', {
                     method: 'POST',
@@ -297,7 +301,7 @@
                 if (response.ok) {
                     showMessage(data.message, 'success');
                     document.getElementById('task-description').value = '';
-                    setSelectedStructure('', '');
+                    clearSelectedStructures();
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     showMessage(data.error, 'danger');
@@ -313,6 +317,16 @@
         
         // Task card click and cancel button handling (event delegation)
         document.addEventListener('click', function(e) {
+            // Remove selected structure item
+            if (e.target.closest('.remove-structure-btn')) {
+                e.stopPropagation();
+                const item = e.target.closest('.selected-structure-item');
+                const path = item && item.dataset ? item.dataset.path : '';
+                if (path) {
+                    removeSelectedStructure(path);
+                }
+                return;
+            }
             // Cancel task button
             if (e.target.closest('.cancel-task-btn')) {
                 e.stopPropagation();
