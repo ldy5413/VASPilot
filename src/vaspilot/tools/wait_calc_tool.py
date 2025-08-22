@@ -74,7 +74,7 @@ class WaitCalcTool(BaseTool):
                 for calc_id in pending_calc_ids.copy():
                     if calc_id in status_result:
                         status = status_result[calc_id].get("status", "unknown")
-                        if status in ["completed", "failed", "cancelled", "unknown"]:
+                        if status in ["completed", "failed", "cancelled", "unknown", "timeout"]:
                             # 任务已完成，保存结果并从待检查列表中移除
                             completed_results[calc_id] = status_result[calc_id]
                             newly_completed.append(calc_id)
