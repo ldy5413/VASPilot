@@ -13,10 +13,6 @@ from typing import Dict, Any
 from .embedding import LocalAPIEmbedder
 from crewai_tools import MCPServerAdapter
 
-# If you want to run a snippet of code before or after the crew starts, 
-# you can use the @before_kickoff and @after_kickoff decorators
-# https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators
-
 class VaspCrew():
 	"""chatmaterials crew"""
 
@@ -38,40 +34,6 @@ class VaspCrew():
 	def stop(self):
 		self.mcp_server.stop()
 
-	# If you would like to add tools to your agents, you can learn more about it here:
-	# https://docs.crewai.com/concepts/agents#agent-tools
-
-	def crystal_structure_agent(self) -> Agent:
-		return Agent(
-			role="Crystal Structure Agent",
-			goal=self.config['agents']['crystal_structure_agent']['goal'],
-			backstory=self.config['agents']['crystal_structure_agent']['backstory'],
-			llm = self.llm_config["crystal_structure_agent"],
-			tools = [self.tool_dicts[tool_name] for tool_name in self.config['agents']['crystal_structure_agent']['tools']],
-			function_calling_llm=self.llm_config['fn_call_llm'],
-		)
-
-	def vasp_agent(self) -> Agent:
-		return Agent(
-			role="VASP Agent",
-			goal=self.config['agents']['vasp_agent']['goal'],
-			backstory=self.config['agents']['vasp_agent']['backstory'],
-			llm = self.llm_config["vasp_agent"],
-			tools = [self.tool_dicts[tool_name] for tool_name in self.config['agents']['vasp_agent']['tools']],
-			function_calling_llm=self.llm_config['fn_call_llm'],
-		)
-
-	
-	def result_validation_agent(self) -> Agent:
-		return Agent(
-			role="Result Validation Agent",
-			goal=self.config['agents']['result_validation_agent']['goal'],
-			backstory=self.config['agents']['result_validation_agent']['backstory'],
-			llm = self.llm_config["result_validation_agent"],
-			tools = [self.tool_dicts[tool_name] for tool_name in self.config['agents']['result_validation_agent']['tools']],
-			function_calling_llm=self.llm_config['fn_call_llm'],
-		)
-
 	def create_manager_agent(self) -> Agent:
 		manager_goal = self.config['agents']['manager_agent']['goal']
 		manager_backstory = self.config['agents']['manager_agent']['backstory']
@@ -85,15 +47,33 @@ class VaspCrew():
 		)
 		return manager
 
+	def create_agent(self, agent_name: str) -> Agent:
+		if not self.config['agents'][agent_name]:
+			raise ValueError(f"Agent {agent_name} not found in config")
+		
+		if self.config['agents'][agent_name]['tools']:
+			tools = [self.tool_dicts[tool_name] for tool_name in self.config['agents'][agent_name]['tools']]
+		else:
+			tools = []
+		
+		fn_call_llm = self.llm_config.get('fn_call_llm', None)
+		
+		return Agent(
+			role=agent_name,
+			goal=self.config['agents'][agent_name]['goal'],
+			backstory=self.config['agents'][agent_name]['backstory'],
+			llm = self.llm_config[agent_name],
+			tools = tools,
+			function_calling_llm=fn_call_llm,
+		)
+
 	
 	def crew(self, work_dir: str) -> Crew:
 		"""Creates the ChatMaterials crew"""
-		# To learn how to add knowledge sources to your crew, check out the documentation:
-		# https://docs.crewai.com/concepts/knowledge#what-is-knowledge
 		if not os.path.exists(f"{work_dir}/memory/"):
 			os.makedirs(f"{work_dir}/memory/")
 		return Crew(
-			agents=[self.crystal_structure_agent(), self.vasp_agent(), self.result_validation_agent()],
+			agents=[self.create_agent(agent_name) for agent_name in self.config['agents'].keys()],
 			tasks=[],
 			process=Process.hierarchical,
 			verbose=True,
