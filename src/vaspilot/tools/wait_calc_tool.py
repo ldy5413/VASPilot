@@ -86,7 +86,7 @@ class WaitCalcTool(BaseTool):
                 # 统计当前状态
                 running_count = len(pending_calc_ids)
                 completed_count = len([r for r in completed_results.values() if r.get("status") == "completed"])
-                failed_count = len([r for r in completed_results.values() if r.get("status") in ["failed", "error"]])
+                failed_count = len([r for r in completed_results.values() if r.get("status") in ["failed", "unknown"]])
                 
                 if newly_completed:
                     print(f"新完成的任务: {newly_completed}")

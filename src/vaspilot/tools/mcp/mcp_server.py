@@ -461,7 +461,7 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
             else:
                 llm_friendly_result[calc_id] = {
                     "error": f"Calculation record {calc_id} not found",
-                    "status": "error"
+                    "status": "unknown"
                 }
         
         return llm_friendly_result
