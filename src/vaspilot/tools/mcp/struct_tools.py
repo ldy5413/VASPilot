@@ -360,6 +360,71 @@ def make_supercell(
             "supercell_structure": None
         }
 
+def scale_structure(
+    struct_path: str,
+    scale_factors: List[int],
+    output_path: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    缩放晶体结构
+    
+    参数:
+        struct_input: 结构输入，可以是文件路径或pymatgen Structure对象
+        scale_factors: 缩放因子，例如 [2, 2, 1]
+        output_path: 输出文件路径，如果提供则保存结构文件
+        
+    返回:
+        Dict包含缩放后的结构和相关信息
+    """
+    
+    try:
+        # 处理输入参数
+        if os.path.exists(struct_path):
+            fmt = None
+            if struct_path.split(".")[-1] in ["poscar", "vasp"]:
+                fmt = "poscar"
+            elif struct_path.split(".")[-1] in ["cif"]:
+                fmt = "cif"
+            else:
+                fmt = "poscar"
+            with open(struct_path, "r") as f:
+                struct = Structure.from_str(f.read(), fmt=fmt)
+        else:
+            return {
+                "success": False,
+                "error": f"文件不存在: {struct_path}",
+                "rotated_structure": None
+            }
+        
+        # 使用pymatgen创建超胞
+        struct_ase = struct.to_ase_atoms()
+        cell = struct_ase.get_cell().array
+        cell = np.array(scale_factors) * cell
+        struct_ase.set_cell(cell)
+        struct = Structure.from_ase_atoms(struct_ase)
+        
+        # 如果提供了输出路径，保存结构文件
+        if output_path:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        else:
+            output_path = struct_path.replace('.vasp', f'_scale_{scale_factors[0]}_{scale_factors[1]}_{scale_factors[2]}.vasp')
+        struct.to(filename=output_path, fmt="poscar")
+        
+        return {
+            "success": True,
+            "error": None,
+            "num_atoms": len(struct),
+            "scale_factors": scale_factors,
+            "output_path": output_path
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"缩放结构时出错: {str(e)}\n{traceback.format_exc()}",
+            "scaled_structure": None
+        }
+
 
 def rotate_structure(
     struct_path: str,

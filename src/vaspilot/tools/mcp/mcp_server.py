@@ -669,6 +669,9 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
         """
         Args:
             struct_path: Structure input; can be a file path or a pymatgen Structure object
+            supercell_matrix: 3 by 3 matrix, supercell matrix.
+        return:
+            Dict containing the path to the created structure file
         """
         return make_supercell(struct_path, supercell_matrix)
 
