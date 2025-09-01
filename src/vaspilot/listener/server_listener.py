@@ -49,7 +49,7 @@ class CrewServer(ABC):
         self.history_log.append(history)
 
 class ServerListener(BaseEventListener):
-    def __init__(self, server: CrewServer, exclude_agents: list = [], exclude_tools: list = ["Delegate work to coworker"]):
+    def __init__(self, server: CrewServer, exclude_agents: list = [], exclude_tools: list = []):
         super().__init__()
         self.exclude_agents = exclude_agents
         self.exclude_tools = exclude_tools

@@ -12,7 +12,7 @@ import math
 import numpy as np
 import pickle
 from .vasp_calculate import vasp_relaxation, vasp_scf, vasp_nscf, check_status, cancel_slurm_job
-from .struct_tools import search_materials_project, analyze_crystal_structure, create_crystal_structure, make_supercell, rotate_structure, symmetrize_structure
+from .struct_tools import search_materials_project, analyze_crystal_structure, create_crystal_structure, make_supercell, rotate_structure, symmetrize_structure, scale_structure
 from pydantic import BaseModel, Field
 from .sqlite_database import VaspCalculationDB
 def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
@@ -674,6 +674,17 @@ def main(config_path: str = None, port: int = 8933, host: str = "0.0.0.0"):
             Dict containing the path to the created structure file
         """
         return make_supercell(struct_path, supercell_matrix)
+
+    @mcp.tool(name="scale_structure")
+    async def scale_structure_tool(struct_path: str, scale_factors: List[int]) -> Dict[str, Any]:
+        """
+        Args:
+            struct_path: Structure input; can be a file path or a pymatgen Structure object
+            scale_factors: Scale factors, e.g., [2, 2, 1]
+        return:
+            Dict containing the path to the created structure file
+        """
+        return scale_structure(struct_path, scale_factors)
 
     @mcp.tool(name="symmetrize_structure")
     async def symmetrize_structure_tool(struct_path: str) -> Dict[str, Any]:

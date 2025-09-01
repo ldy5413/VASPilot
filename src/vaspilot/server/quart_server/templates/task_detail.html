@@ -1075,187 +1075,204 @@
         workflowContainer.innerHTML = '';
         
         try {
-            // 分析日志，提取Agent和Tool序列
-            const activities = [];
-            let currentAgent = null;
-            let agentTools = [];
+            // 使用栈结构管理Agent和Tool
+            const agentStack = [];  // Agent栈
+            const toolStack = [];   // Tool栈
+            const allAgents = [];   // 所有Agent记录
+            const allTools = [];    // 所有Tool记录
+            const connections = []; // 连接关系
             let agentIndex = 0;
             let toolIndex = 0;
+            let lastAgent = null;   // 记录上一个完成的Agent
             
             logs.forEach((log, index) => {
-                // 过滤掉manager相关的日志，这些通常是框架内部的管理器节点
-                const isManagerRelated = log.role_name && log.role_name.toLowerCase().includes('manager');
+                // 过滤掉manager相关的日志
+                // const isManagerRelated = log.role_name && log.role_name.toLowerCase().includes('manager');
+                // if (isManagerRelated) {
+                //    return;
+                //}
                 
-                if (isManagerRelated) {
-                    return; // 跳过manager相关的日志
-                }
-                
+                // 处理Agent输入
                 if (log.type === 'agent_input') {
-                    // 如果之前有Agent，先保存它
-                    if (currentAgent) {
-                        // 查找对应的agent_output
-                        const outputLog = logs.find((l, idx) => 
-                            idx > currentAgent.logIndex && 
-                            l.type === 'agent_output' && 
-                            l.role_name === currentAgent.originalName
-                        );
-                        
-                        activities.push({
-                            type: 'agent',
-                            id: 'agent' + (agentIndex++),
-                            name: currentAgent.name,
-                            tools: [...agentTools],
-                            timestamp: currentAgent.timestamp,
-                            logIndex: currentAgent.logIndex,
-                            outputTimestamp: outputLog ? outputLog.timestamp : currentAgent.timestamp,
-                            outputLogIndex: outputLog ? logs.indexOf(outputLog) : currentAgent.logIndex
-                        });
-                    }
-                    
-                    // 直接使用role_name字段
                     let agentName = log.role_name || 'Agent-' + (agentIndex + 1);
-                    const originalName = log.role_name;
-                    
-                    // 调试信息（已移除）
-                    
-                    // 限制长度以避免流程图过宽
                     if (agentName.length > 25) {
                         agentName = agentName.substring(0, 22) + '...';
                     }
                     
-                    // 开始新的Agent活动
-                    currentAgent = {
+                    const agent = {
+                        id: 'agent' + (agentIndex++),
                         name: agentName,
-                        originalName: originalName,
+                        originalName: log.role_name,
                         timestamp: log.timestamp,
                         logIndex: index
                     };
-                    agentTools = [];
                     
-                } else if (log.type === 'tool_input' && currentAgent) {
-                    // 直接使用role_name字段
+                    // Agent入栈
+                    agentStack.push(agent);
+                    allAgents.push(agent);
+                    
+                    // 根据规则创建连接
+                    if (toolStack.length > 0) {
+                        // Tool栈顶有记录，用虚线从Tool指向该Agent
+                        const topTool = toolStack[toolStack.length - 1];
+                        connections.push({
+                            from: topTool.id,
+                            to: agent.id,
+                            type: 'dashed'
+                        });
+                    } else if (lastAgent) {
+                        // Tool栈为空，用实线从上一个Agent指向该Agent
+                        connections.push({
+                            from: lastAgent.id,
+                            to: agent.id,
+                            type: 'solid'
+                        });
+                    }
+                }
+                
+                // 处理Agent输出
+                else if (log.type === 'agent_output') {
+                    // 找到对应的Agent并出栈
+                    const agentIdx = agentStack.findIndex(a => a.originalName === log.role_name);
+                    if (agentIdx !== -1) {
+                        const agent = agentStack[agentIdx];
+                        
+                        // 如果Tool栈顶有记录，用虚线从Agent指回Tool
+                        if (toolStack.length > 0) {
+                            const topTool = toolStack[toolStack.length - 1];
+                            connections.push({
+                                from: agent.id,
+                                to: topTool.id,
+                                type: 'dashed'
+                            });
+                        }
+                        
+                        // Agent出栈
+                        agentStack.splice(agentIdx, 1);
+                        
+                        // 记录为最后完成的Agent
+                        lastAgent = agent;
+                    }
+                }
+                
+                // 处理Tool输入
+                else if (log.type === 'tool_input') {
                     let toolName = log.role_name || 'Tool-' + (toolIndex + 1);
-                    
-                    // 调试信息（已移除）
-                    
-                    // 限制长度以避免流程图过宽
                     if (toolName.length > 20) {
                         toolName = toolName.substring(0, 17) + '...';
                     }
                     
-                    agentTools.push({
+                    const tool = {
                         id: 'tool' + (toolIndex++),
                         name: toolName,
+                        originalName: log.role_name,
                         timestamp: log.timestamp,
                         logIndex: index
-                    });
+                    };
+                    
+                    // Tool入栈
+                    toolStack.push(tool);
+                    allTools.push(tool);
+                    
+                    // 如果Agent栈顶有记录，用虚线从Agent指向Tool
+                    if (agentStack.length > 0) {
+                        const topAgent = agentStack[agentStack.length - 1];
+                        connections.push({
+                            from: topAgent.id,
+                            to: tool.id,
+                            type: 'dashed'
+                        });
+                    }
+                }
+                
+                // 处理Tool输出
+                else if (log.type === 'tool_output') {
+                    // 找到对应的Tool并出栈
+                    const toolIdx = toolStack.findIndex(t => t.originalName === log.role_name);
+                    if (toolIdx !== -1) {
+                        const tool = toolStack[toolIdx];
+                        
+                        // 如果Agent栈顶有记录，用虚线从Tool指回Agent
+                        if (agentStack.length > 0) {
+                            const topAgent = agentStack[agentStack.length - 1];
+                            connections.push({
+                                from: tool.id,
+                                to: topAgent.id,
+                                type: 'dashed'
+                            });
+                        }
+                        
+                        // Tool出栈
+                        toolStack.splice(toolIdx, 1);
+                    }
                 }
             });
             
-            // 保存最后一个Agent
-            if (currentAgent) {
-                // 查找对应的agent_output
-                const outputLog = logs.find((l, idx) => 
-                    idx > currentAgent.logIndex && 
-                    l.type === 'agent_output' && 
-                    l.role_name === currentAgent.originalName
-                );
-                
-                activities.push({
-                    type: 'agent',
-                    id: 'agent' + (agentIndex++),
-                    name: currentAgent.name,
-                    tools: [...agentTools],
-                    timestamp: currentAgent.timestamp,
-                    logIndex: currentAgent.logIndex,
-                    outputTimestamp: outputLog ? outputLog.timestamp : currentAgent.timestamp,
-                    outputLogIndex: outputLog ? logs.indexOf(outputLog) : currentAgent.logIndex
-                });
-            }
-            
-            // 创建工具列表（在外部作用域）
-            const allTools = [];
-            activities.forEach(activity => {
-                activity.tools.forEach(tool => {
-                    allTools.push({
-                        agentId: activity.id,
-                        agentName: activity.name,
-                        ...tool
-                    });
-                });
-            });
-            
-            // 生成Mermaid流程图代码 - 改为水平布局
+            // 生成Mermaid流程图代码
             let mermaidCode = 'graph LR\n';
             
-            if (activities.length === 0) {
+            if (allAgents.length === 0 && allTools.length === 0) {
                 mermaidCode += '    Start([Start]) --> End([End])\n';
             } else {
                 // 添加开始节点
                 mermaidCode += '    Start([Start])\n';
                 
-                // 创建Agent节点 - 使用圆角长方形
-                activities.forEach((activity, index) => {
-                    // 清理Agent名称，确保使用具体名称
-                    let safeName = activity.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
+                // 创建所有Agent节点
+                allAgents.forEach((agent) => {
+                    let safeName = agent.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
                     if (!safeName || safeName.match(/^Agent[-\s]*\d*$/i)) {
-                        // 如果是默认名称或空名称，使用更具体的名称
-                        safeName = 'Agent' + (index + 1);
+                        safeName = 'Agent' + agent.id.replace('agent', '');
                     }
-                    // 移除常见的前缀
                     safeName = safeName.replace(/^(Agent|agent|代理)[-\s]*/i, '');
                     if (!safeName) {
-                        safeName = 'Agent' + (index + 1);
+                        safeName = 'Agent' + agent.id.replace('agent', '');
                     }
                     if (safeName.length > 25) {
                         safeName = safeName.substring(0, 22) + '...';
                     }
-                    
-                    // 使用圆角长方形显示Agent
-                    mermaidCode += '    ' + activity.id + '(' + safeName + ')\n';
+                    mermaidCode += '    ' + agent.id + '(' + safeName + ')\n';
                 });
                 
-                // 连接Agent节点
-                for (let i = 0; i < activities.length - 1; i++) {
-                    mermaidCode += '    ' + activities[i].id + ' --> ' + activities[i + 1].id + '\n';
-                }
+                // 创建所有Tool节点
+                allTools.forEach((tool) => {
+                    let safeToolName = tool.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
+                    if (!safeToolName || safeToolName.match(/^Tool[-\s]*\d*$/i)) {
+                        safeToolName = 'Tool' + tool.id.replace('tool', '');
+                    }
+                    safeToolName = safeToolName.replace(/^(Tool|tool)[-\s]*/i, '');
+                    if (!safeToolName) {
+                        safeToolName = 'Tool' + tool.id.replace('tool', '');
+                    }
+                    if (safeToolName.length > 20) {
+                        safeToolName = safeToolName.substring(0, 17) + '...';
+                    }
+                    mermaidCode += '    ' + tool.id + '[' + safeToolName + ']\n';
+                });
                 
-                // 创建工具节点 - 使用方角长方形
-                if (allTools.length > 0) {
-                    allTools.forEach((tool, toolIndex) => {
-                        // 清理工具名称，确保使用具体名称
-                        let safeToolName = tool.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
-                        if (!safeToolName || safeToolName.match(/^Tool[-\s]*\d*$/i)) {
-                            // 如果是默认名称或空名称，使用更描述性的名称
-                            safeToolName = 'Tool' + (toolIndex + 1);
-                        }
-                        // 移除常见的前缀
-                        safeToolName = safeToolName.replace(/^(Tool|tool|Tool)[-\s]*/i, '');
-                        if (!safeToolName) {
-                            safeToolName = 'Tool' + (toolIndex + 1);
-                        }
-                        if (safeToolName.length > 20) {
-                            safeToolName = safeToolName.substring(0, 17) + '...';
-                        }
-                        
-                        // 使用方角长方形显示Tool
-                        mermaidCode += '    ' + tool.id + '[' + safeToolName + ']\n';
-                    });
-                    
-                    // 连接Agent和工具 - 使用虚线
-                    allTools.forEach(tool => {
-                        mermaidCode += '    ' + tool.agentId + ' -.-> ' + tool.id + '\n';
-                        mermaidCode += '    ' + tool.id + ' -.-> ' + tool.agentId + '\n';
-                    });
-                }
+                // 添加所有连接
+                connections.forEach(conn => {
+                    if (conn.type === 'solid') {
+                        mermaidCode += '    ' + conn.from + ' --> ' + conn.to + '\n';
+                    } else {
+                        mermaidCode += '    ' + conn.from + ' -.-> ' + conn.to + '\n';
+                    }
+                });
                 
                 // 连接开始和结束节点
-                if (activities.length > 0) {
-                    mermaidCode += '    Start --> ' + activities[0].id + '\n';
-                    mermaidCode += '    ' + activities[activities.length-1].id + ' --> End([End])\n';
+                if (allAgents.length > 0) {
+                    // 找到第一个Agent（没有其他Agent指向它的）
+                    const firstAgent = allAgents.find(agent => 
+                        !connections.some(conn => conn.to === agent.id && conn.type === 'solid')
+                    );
+                    if (firstAgent) {
+                        mermaidCode += '    Start --> ' + firstAgent.id + '\n';
+                    }
+                    
+                    // 找到最后一个Agent（lastAgent）
+                    if (lastAgent) {
+                        mermaidCode += '    ' + lastAgent.id + ' --> End([End])\n';
+                    }
                 }
-                
-                // 注意：点击事件现在通过JavaScript手动绑定，不在Mermaid代码中声明
             }
             
             // 添加样式
@@ -1264,8 +1281,8 @@
             mermaidCode += '    classDef toolNode fill:#fff3e0,stroke:#f57c00,stroke-width:3px,color:#000,cursor:pointer\n';
             mermaidCode += '    classDef startEndNode fill:#e8f5e8,stroke:#4caf50,stroke-width:3px,color:#000\n';
             
-            activities.forEach(activity => {
-                mermaidCode += '    class ' + activity.id + ' agentNode\n';
+            allAgents.forEach(agent => {
+                mermaidCode += '    class ' + agent.id + ' agentNode\n';
             });
             allTools.forEach(tool => {
                 mermaidCode += '    class ' + tool.id + ' toolNode\n';
@@ -1304,7 +1321,7 @@
                                     let toolNode = null;
 
                                     for (const rid of candidates) {
-                                        activityNode = activities.find(a => rid === a.id || rid.startsWith(a.id + '-') || rid.endsWith('-' + a.id) || rid.includes('-' + a.id + '-'));
+                                        activityNode = allAgents.find(a => rid === a.id || rid.startsWith(a.id + '-') || rid.endsWith('-' + a.id) || rid.includes('-' + a.id + '-'));
                                         if (activityNode) break;
                                     }
                                     if (activityNode) {
@@ -1330,7 +1347,7 @@
                                 console.warn('Workflow click: no matching node found', {
                                     clickedTag: event.target.tagName,
                                     idChain: idChain,
-                                    knownAgentIds: activities.map(a => a.id),
+                                    knownAgentIds: allAgents.map(a => a.id),
                                     knownToolIds: allTools.map(t => t.id)
                                 });
                             }
@@ -1367,7 +1384,7 @@
                                         let toolNode = null;
 
                                         for (const rid of candidates) {
-                                            activityNode = activities.find(a => rid === a.id || rid.startsWith(a.id + '-') || rid.endsWith('-' + a.id) || rid.includes('-' + a.id + '-'));
+                                            activityNode = allAgents.find(a => rid === a.id || rid.startsWith(a.id + '-') || rid.endsWith('-' + a.id) || rid.includes('-' + a.id + '-'));
                                             if (activityNode) break;
                                         }
                                         if (activityNode) {
@@ -1393,7 +1410,7 @@
                                     console.warn('Workflow click: no matching node found (fallback)', {
                                         clickedTag: event.target.tagName,
                                         idChain: idChain,
-                                        knownAgentIds: activities.map(a => a.id),
+                                        knownAgentIds: allAgents.map(a => a.id),
                                         knownToolIds: allTools.map(t => t.id)
                                     });
                                 }

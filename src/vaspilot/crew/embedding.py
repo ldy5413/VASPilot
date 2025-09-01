@@ -1,11 +1,13 @@
 import requests
 from chromadb import Documents, Embeddings, EmbeddingFunction
 from typing import cast
+from urllib.parse import urljoin
+
 class LocalAPIEmbedder(EmbeddingFunction):
-    def __init__(self, url: str = "http://172.16.8.24:8003/v1/embeddings", 
+    def __init__(self, url: str = "http://172.16.8.24:8003/v1/", 
                  model_id: str = "BAAI/bge-m3",
                  api_key: str = "EMPTY"):
-        self.url = url
+        self.url = urljoin(url, "embeddings")
         self.model_id = model_id
         self.headers = {
             "Content-Type": "application/json",
@@ -47,4 +49,3 @@ class LocalAPIEmbedder(EmbeddingFunction):
         return cast(
                 Embeddings, [result["embedding"] for result in sorted_embeddings]
             )
-    
