@@ -11,7 +11,7 @@ llm_mapper:
     api_key: your-api-key-here  
     model: openai/Qwen3-235B-A22B
     temperature: 0.0001   #non-zero temperature to avoid weird bugs
-  
+  # we tested Qwen3-235B-A22B-Instruct deepseek-v3. We recommend using these two models.
 llm_config:
   #Fill in modelname defined in llm_mapper
   crystal_structure_agent: your-model-name
@@ -23,7 +23,7 @@ llm_config:
 # Setup embedding model for RAG in memory.
 embbeder:
   url: http://xxx.xx.xx.xx:xxxx/v1/embeddings
-  model_id: BAAI/bge-m3
+  model_id: Qwen3-Embedding-8B # we recommend using Qwen3-Embedding-8B for RAG
   api_key: your_api_key_here
 
 mcp_server:
@@ -31,7 +31,38 @@ mcp_server:
   url: http://localhost:8933/mcp 
   transport: streamable-http
 
+
+tool_params:
+  json_approx_search_tool:
+    sources:
+      - /path/to/this/example/knowledge/incar_tags.json
+      - /path/to/this/example/knowledge/how_to.json
+    chroma_db_path: /path/to/this/example/knowledge/chroma_db
+  json_strict_search_tool:
+    sources:
+      - /path/to/this/example/knowledge/incar_tags.json
+      - /path/to/this/example/knowledge/how_to.json
+  ask_question_tool:
+    agents:
+      - retrieve_agent
+  delegate_work_tool:
+    agents:
+      - retrieve_agent
+
 agents:
+
+  retrieve_agent:
+    role: VASP document retrieve Agent
+    goal: "你的目标是根据需要，利用工具检索INCAR参数的含义和设置等，并回答问题。"
+    backstory: >
+        你是一个经验丰富的检索操作员，你擅长利用工具搜索检索必要的信息。
+            1. 根据任务和问题，调用json_approx_search_tool锁定大致相关的参数
+            2. 根据具体参数名称，调用json_strict_search_tool查询详细信息。
+            3. 重复以上操作，直到你已经检索到所有相关信息。
+        任务完成后，要给一个简短、完整的报告，总结检索到的信息。
+    tools: 
+      - json_approx_search_tool
+      - json_strict_search_tool
 
   crystal_structure_agent:
     # prompt for the agent

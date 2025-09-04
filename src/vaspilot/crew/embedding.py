@@ -25,7 +25,7 @@ class LocalAPIEmbedder(EmbeddingFunction):
             self.url,
             headers=self.headers,
             json=payload,
-            timeout=30  # 设置超时时间（根据实际情况调整）
+            timeout=300  # 设置超时时间（根据实际情况调整）
         )
 
         # 处理 API 响应

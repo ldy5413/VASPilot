@@ -32,19 +32,20 @@ class JsonApproxSearch(BaseTool):
     
     # 添加embedding_function作为字段
     embedding_function: EmbeddingFunction = Field(description="Embedding function for ChromaDB")
-    
+    source_files: Set[str] = Field(default_factory=set)
     # 声明实例属性类型，添加默认值
     client: Optional[ClientAPI] = Field(default=None)
     collection: Optional[Collection] = Field(default=None)
-    added_files: Set[str] = Field(default_factory=set)
-    
+    chroma_db_path: str = Field(default="")
+
     @model_validator(mode='after')
     def initialize_components(self) -> 'JsonApproxSearch':
         """Pydantic v2风格的初始化方法"""
         # 初始化ChromaDB客户端
-        self.client = chromadb.Client()
-        
-        # 创建或获取集合
+        if self.chroma_db_path:
+            self.client = chromadb.PersistentClient(path=self.chroma_db_path)
+        else:
+            self.client = chromadb.Client()
         self.collection = self.client.get_or_create_collection(
             name="json_knowledge_base",
             metadata={"hnsw:space": "cosine"},
@@ -52,8 +53,9 @@ class JsonApproxSearch(BaseTool):
         )
         
         # 用于跟踪已添加的文件
-        if self.added_files is None:
-            self.added_files = set()
+        if self.collection.count() == 0:
+            for files in self.source_files:
+                self.add(files)
             
         return self
     
@@ -69,11 +71,6 @@ class JsonApproxSearch(BaseTool):
         # 检查文件是否存在
         if not json_path.exists():
             raise FileNotFoundError(f"文件不存在: {json_file_path}")
-        
-        # 检查是否已添加
-        if str(json_path.absolute()) in self.added_files:
-            print(f"文件已在知识库中: {json_file_path}")
-            return
         
         # 读取JSON文件
         with open(json_path, 'r', encoding='utf-8') as f:
@@ -117,9 +114,6 @@ class JsonApproxSearch(BaseTool):
             )
             print(f"成功添加 {len(documents)} 个标签到知识库: {json_file_path}")
         
-        # 记录已添加的文件
-        self.added_files.add(str(json_path.absolute()))
-    
     def _run(self, query: str, top_k: int = 10) -> dict:
         """
         执行RAG查询
@@ -159,21 +153,6 @@ class JsonApproxSearch(BaseTool):
             }
         
         return response
-    
-    def clear_knowledge_base(self) -> None:
-        """清空知识库"""
-        self.client.delete_collection(name="json_knowledge_base")
-        self.collection = self.client.create_collection(
-            name="json_knowledge_base",
-            metadata={"hnsw:space": "cosine"},
-            embedding_function=self.embedding_function
-        )
-        self.added_files.clear()
-        print("知识库已清空。")
-    
-    def list_added_files(self) -> List[str]:
-        """列出已添加到知识库的文件"""
-        return list(self.added_files)
 
 class JsonStrictSearchInput(BaseModel):
     tag_name: str = Field(description="the exact tag_name to query details.")
@@ -185,7 +164,7 @@ class JsonStrictSearch(BaseTool):
     name: str = "strict_search_tool"
     description: str = "Tool to query detailed descriptions. The detailed description is long, only query the most important tags."
     args_schema: Type[BaseModel] = JsonStrictSearchInput
-    
+    source_files: Set[str] = Field(default_factory=set)
     # 声明实例属性类型
     data_dict: Dict[str, Any] = Field(default_factory=dict)
 
@@ -201,6 +180,15 @@ class JsonStrictSearch(BaseTool):
             data = json.load(f)
         for tag_name, tag_info in data.items():
             self.data_dict[tag_name] = tag_info
+
+    @model_validator(mode='after')
+    def initialize_components(self) -> 'JsonStrictSearch':
+        """Pydantic v2风格的初始化方法"""
+        # 用于跟踪已添加的文件
+        for files in self.source_files:
+            self.add(files)
+            
+        return self
 
     def _run(self, tag_name: str) -> str:
         if self.data_dict.get(tag_name, None) is not None:

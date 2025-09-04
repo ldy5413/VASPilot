@@ -91,7 +91,7 @@ class QuartCrewServer(CrewServer):
         self.upload_dir = os.path.join(self.work_dir, 'uploads')
         os.makedirs(self.upload_dir, exist_ok=True)
         
-        #self.generator = VaspCrew(self.config)
+        self.generator = VaspCrew(self.config)
         self.current_logger = ServerListener(self)
         # 并行任务下映射关系：conversation_id <-> crew_fingerprint
         self._conversation_to_fingerprint: Dict[str, str] = {}
@@ -844,11 +844,32 @@ class QuartCrewServer(CrewServer):
             self.system_log(f"提取计算ID时出错: {str(e)}")
             return []
 
-    def _run_crew_kickoff_thread(self, crew, result_container: Dict[str, Any], conversation_id: str) -> None:
+    def _run_crew_kickoff_thread(self, local_dir, task_description, result_container: Dict[str, Any], conversation_id: str) -> None:
         """在独立线程中执行 crew.kickoff 并记录线程ID与结果。"""
         self._crew_thread_ids[conversation_id] = threading.get_ident()
         try:
+            self.system_log("Initializing crew...")
+            crew = self.generator.crew(local_dir)
+            # 注册映射关系（先注册再记录日志，避免未映射时fingerprint为None）
+            self._register_mapping(conversation_id, crew.fingerprint.uuid_str)
+            self.system_log("Registered mapping", crew.fingerprint.uuid_str)
+            self.system_log("Creating user task...", crew.fingerprint.uuid_str)
+            
+            # 创建任务
+            task = Task(
+                description=task_description,
+                expected_output="A detailed report, including the execution process, calculation results, and the location of the drawn charts.",
+                output_file=f'crew_output_{uuid.uuid4().hex[:8]}.md',
+            )
+            
+            crew.tasks = [task]
+            
+            self.system_log("Starting task execution...", crew.fingerprint.uuid_str)
             result_container['result'] = crew.kickoff()
+
+
+            self.system_log("Task completed!", crew.fingerprint.uuid_str)
+            self.agent_output("FinalResult", str(result_container['result']), crew.fingerprint.uuid_str)
         except BaseException as e:
             result_container['error'] = e
         finally:
@@ -913,29 +934,11 @@ class QuartCrewServer(CrewServer):
                 
                 try:
                     # 初始化并建立映射
-                    self.system_log("Initializing crew...")
-                    generator = VaspCrew(self.config)
-                    crew = generator.crew(local_dir)
-                    # 注册映射关系（先注册再记录日志，避免未映射时fingerprint为None）
-                    self._register_mapping(conversation_id, crew.fingerprint.uuid_str)
-                    self.system_log("Registered mapping", crew.fingerprint.uuid_str)
-                    self.system_log("Creating user task...", crew.fingerprint.uuid_str)
-                    
-                    # 创建任务
-                    task = Task(
-                        description=task_description,
-                        expected_output="A detailed report, including the execution process, calculation results, and the location of the drawn charts.",
-                        output_file=f'crew_output_{uuid.uuid4().hex[:8]}.md',
-                    )
-                    
-                    crew.tasks = [task]
-                    
-                    self.system_log("Starting task execution...", crew.fingerprint.uuid_str)
                     # 在线程中执行同步 kickoff，便于后续强制停止
                     result_container: Dict[str, Any] = {}
                     thread = threading.Thread(
                         target=self._run_crew_kickoff_thread,
-                        args=(crew, result_container, conversation_id),
+                        args=(local_dir, task_description, result_container, conversation_id),
                         daemon=True,
                         name=f"crew-kickoff-{conversation_id[:8]}"
                     )
@@ -948,9 +951,6 @@ class QuartCrewServer(CrewServer):
                     if 'error' in result_container:
                         raise result_container['error']
                     result = result_container.get('result')
-                    
-                    self.system_log("Task completed!", crew.fingerprint.uuid_str)
-                    self.agent_output("FinalResult", str(result), crew.fingerprint.uuid_str)
                     
                     # 更新任务状态
                     async with aiosqlite.connect(self.db_path) as conn:
@@ -967,14 +967,8 @@ class QuartCrewServer(CrewServer):
                 # 强制停止后台 crew 执行线程并等待退出
                 try:
                     await self._stop_and_join_crew_thread(conversation_id)
-                except Exception:
-                    pass
-                # 尝试停止 generator（若存在）
-                try:
-                    if 'generator' in locals() and hasattr(generator, 'stop'):
-                        generator.stop()
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Failed to stop crew thread: {e}")
                 async with aiosqlite.connect(self.db_path) as conn:
                     await conn.execute(
                         'UPDATE task_executions SET status = ?, completed_at = CURRENT_TIMESTAMP, error_message = ? WHERE conversation_id = ?',
@@ -1005,10 +999,9 @@ class QuartCrewServer(CrewServer):
                 # 完成日志
                 fingerprint = self._conversation_to_fingerprint.get(conversation_id)
                 try:
-                    if 'generator' in locals() and hasattr(generator, 'stop') and callable(getattr(generator, 'stop')):
-                        generator.stop()
-                except Exception:
-                    pass
+                    self.generator.stop()
+                except Exception as e:
+                    print(f"Failed to stop mcp client: {e}")
                 if fingerprint:
                     self.system_log("Mission ended", fingerprint)
                 else:
