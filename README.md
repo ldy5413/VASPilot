@@ -126,6 +126,9 @@ mcp_server:
   transport: streamable-http
 ```
 
+#### 4. Explore Additional Examples:
+Thanks to CrewAI's flexibility, VASPilot allows you to easily customize agent and tool configurations using different `crew_config.yaml` files. The setup process follows the same steps as the basic configuration. Explore more examples in [examples](./examples/) to find the configuration that best suits your needs. You can also customize the configurations to create the optimal VASPilot setup for your specific requirements.
+
 #### Required API Keys
 
 - **Materials Project API**: Required for structure search functionality

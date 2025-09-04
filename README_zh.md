@@ -125,6 +125,9 @@ mcp_server:
   transport: streamable-http
 ```
 
+#### 4. 探索更多示例：
+得益于CrewAI的灵活性，VASPilot允许您通过不同的`crew_config.yaml`文件轻松自定义代理和工具配置。设置过程与基本配置的步骤相同。您可以在[examples](./examples/)中探索更多示例，找到最适合您需求的配置。您也可以自定义配置文件，创建满足您特定需求的最佳VASPilot设置。
+
 #### 必需的API密钥
 
 - **Materials Project API**：结构搜索功能所需
