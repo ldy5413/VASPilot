@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build: .
+    container_name: vaspilot-mcp
+    ports:
+      - "8933:8933"
+    volumes:
+      - ./configs:/app/configs
+      - ./data/mcp_work:/app/data/mcp_work
+      - ./data/record:/app/data/record
+      - ./data/downloads:/app/data/downloads
+      - ./attachments:/app/data/attachments
+    environment:
+      - PMG_VASP_PSP_DIR=${PMG_VASP_PSP_DIR}
+    command: >
+      bash -c "
+        export PMG_VASP_PSP_DIR=${PMG_VASP_PSP_DIR} &&
+        vaspilot_mcp --config /app/configs/mcp_config.yaml --port 8933
+      "
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  quart-server:
+    build: .
+    container_name: vaspilot-quart
+    ports:
+      - "51293:51293"
+    volumes:
+      - ./configs:/app/configs
+      - ./data/uploads:/app/data/uploads
+      - ./data/memory:/app/data/memory
+      - ./data/work:/app/data/work
+    environment:
+      - PMG_VASP_PSP_DIR=${PMG_VASP_PSP_DIR}
+    depends_on:
+      - mcp-server
+    command: >
+      bash -c "
+        sleep 10 &&
+        export PMG_VASP_PSP_DIR=${PMG_VASP_PSP_DIR} &&
+        vaspilot_quart --config /app/configs/crew_config.yaml --port 51293 --work-dir /app/data/work --allow-path /app --max-concurrent-tasks ${MAX_CONCURRENT_TASKS:-2} --max-queue-size ${MAX_QUEUE_SIZE:-10}
+      "
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  # Optional: Flask server (alternative to Quart)
+  # flask-server:
+  #   build: .
+  #   container_name: vaspilot-flask
+  #   ports:
+  #     - "51294:51294"
+  #   volumes:
+  #     - ./configs:/app/configs
+  #     - ./data/uploads:/app/data/uploads
+  #     - ./data/work:/app/data/work
+  #   environment:
+  #     - PMG_VASP_PSP_DIR=${PMG_VASP_PSP_DIR}
+  #   depends_on:
+  #     - mcp-server
+  #   command: >
+  #     bash -c "
+  #       sleep 10 &&
+  #       export PMG_VASP_PSP_DIR=${PMG_VASP_PSP_DIR} &&
+  #       vaspilot_flask --config /app/configs/crew_config.yaml --port 51294 --work-dir /app/data/work --allow-path /app
+  #     "
+  #   env_file:
+  #     - .env
+  #   restart: unless-stopped
